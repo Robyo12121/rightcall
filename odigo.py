@@ -1,10 +1,10 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 import os
 import sys
 import time
-
+print(sys.version)
 import pandas as pd
 from bs4 import BeautifulSoup
 from fbi import getpassword
@@ -17,7 +17,7 @@ start_time = '12:00 AM'
 end_date = '07-01-2018'
 end_time = '11:59 PM'
 
-driver = '/usr/lib/chromium-browser/chromedriver'
+driver = r'C:\Users\RSTAUNTO\Desktop\chromedriver.exe'
 s = Session(webdriver_path=driver,
             browser='chrome',
             default_timeout=15,
@@ -183,6 +183,10 @@ def search_by_ref(s, ref):
     s.driver.ensure_element_by_id('button-1009').click()
     return s
 
+if __name__ == '__main__':
+    
+    download_mp3_by_ref(s, username, passwd, '3905beTOd10339')
+
 # Example. Download mp3 file from www.prosodie.com by '3905beTOd10339'
 # ref number
 #download_mp3_by_ref(s, username, passwd, '3905beTOd10339')
@@ -197,3 +201,4 @@ def search_by_ref(s, ref):
 # Example. Download mp3 file/files from www.prosodie.com page by input csv file
 # to dedicated directory
 #download_mp3_by_csv(s, username, passwd, 'input.csv', download_dir='/tmp')
+

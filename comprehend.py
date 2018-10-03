@@ -35,3 +35,10 @@ def get_sentiment(text, language_code='en'):
 #        lighter brown than pictured but fairly close. Would be ten times \
 #        better if it was lined with cotton or wool on the inside."
 #get_sentiment(text)
+
+if __name__ == '__main__':
+    text = """I ordered a small and expected it to fit just right but it was a little bit
+ more like a medium-large. It was great quality. It's a lighter brown than
+ pictured but fairly close. Would be ten times better if it was lined with
+ cotton or wool on the inside."""
+    sentiment = get_sentiment(text)
