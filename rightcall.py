@@ -1,9 +1,9 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # 1. Download mp3 files from www.prosodie.com to local machine.
 # 2. Upload mp3 files from local machine to 'mp3.rightcall' AWS S3 bucket.
-# 3. Trinscribe mp3 files from 'mp3.rightcall' AWS S3 bucket to
+# 3. Transcribe mp3 files from 'mp3.rightcall' AWS S3 bucket to
 # 'transcribe.rightcall' AWS S3 bucket.
 # 4. Save data to Google Sheets.
 
@@ -24,32 +24,45 @@ def main(transcribe_bucket_name, mp3_bucket_name):
     """Right Call/Contact Center Monitoring written in Python"""
 
     s3 = boto3.resource('s3')
-    for bucket in s3.buckets.all():
-        if bucket.name == transcribe_bucket_name:
-            for key in bucket.objects.all():
-                if key.key.endswith('.json'):
+    for bucket in s3.buckets.all(): # Loop through all buckets
+        if bucket.name == transcribe_bucket_name: # Find transcribe bucket
+            for key in bucket.objects.all(): # Loop through keys
+                print(key)
+                if key.key.endswith('.json'): # Find json files
+                    print(key.key)
                     r = {}
                     # Get reference number
-                    reference = basename(key.key).replace('.json', '')
+                    reference = basename(key.key).replace('.json', '') # Find name of file
                     r['ref'] = reference
+                    print(r)
                     # Get URL
                     location = boto3.client('s3') \
                             .get_bucket_location(
-                            Bucket=mp3_bucket_name)['LocationConstraint']
-                    base_url = join('https://s3-%s.amazonaws.com' % location,
+                            Bucket=mp3_bucket_name)['LocationConstraint'] # Find AWS region of bucket
+                    print(location)
+                    base_url = join('https://s3-%s.amazonaws.com' % location, # Create URL for bucket in same region for mp3 files
                             mp3_bucket_name)
+                    print(base_url)
                     url = join(base_url, key.key.replace('.json', '.mp3'))
+                    print(url)
                     r['url'] = url
                     # Download json file
                     try:
                         s3.Bucket(transcribe_bucket_name) \
-                          .download_file(key.key, key.key)
+                          .download_file(key.key, key.key) # download the file
                     except Exception as exception:
-                        return 1
+                        print(exception)
                     # Get text
-                    with open(key.key, 'r') as f:
-                        data = json.load(f)
-                    text = data['results']['transcripts'][0]['transcript']
+                    try:
+                        with open(key.key, 'r') as f:
+                            data = json.load(f)
+                    except Exception as exception:
+                        print(exception)
+
+                    try:
+                        text = data['results']['transcripts'][0]['transcript']
+                    except Exception as exception:
+                        print(exception)
                     r['text'] = text
                     # Get sentiment
                     sentiment = get_sentiment(text)

@@ -1,7 +1,8 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import boto3
+
 
 def get_sentiment(text, language_code='en'):
     """Inspects text and returns an inference of the prevailing sentiment
@@ -21,7 +22,7 @@ def get_sentiment(text, language_code='en'):
     try:
         r = comprehend.detect_sentiment(Text=text, LanguageCode='en')
     except Exception as exception:
-        return 1
+        print(exception)
     sentiment = r['Sentiment'].lower()
     return sentiment
 
@@ -30,11 +31,12 @@ def get_sentiment(text, language_code='en'):
 # more like a medium-large. It was great quality. It's a lighter brown than
 # pictured but fairly close. Would be ten times better if it was lined with
 # cotton or wool on the inside."
-#text = "I ordered a small and expected it to fit just right but it was a \
+# text = "I ordered a small and expected it to fit just right but it was a \
 #        little bit more like a medium-large. It was great quality. It's a \
 #        lighter brown than pictured but fairly close. Would be ten times \
 #        better if it was lined with cotton or wool on the inside."
-#get_sentiment(text)
+# get_sentiment(text)
+
 
 if __name__ == '__main__':
     text = """I ordered a small and expected it to fit just right but it was a little bit
@@ -42,3 +44,4 @@ if __name__ == '__main__':
  pictured but fairly close. Would be ten times better if it was lined with
  cotton or wool on the inside."""
     sentiment = get_sentiment(text)
+    print(sentiment)

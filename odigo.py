@@ -7,11 +7,11 @@ import time
 print(sys.version)
 import pandas as pd
 from bs4 import BeautifulSoup
-from fbi import getpassword
 from requestium import Session
-
-username = 'rkorniic'
-passwd = getpassword('~/.key/odigo.enc')
+from dotenv import load_dotenv
+load_dotenv()
+username = os.environ.get('PROSODIE_USERNAME') 
+passwd = os.environ.get('PROSODIE_PASSWORD')
 start_date = '07-01-2018'
 start_time = '12:00 AM'
 end_date = '07-01-2018'
@@ -184,9 +184,8 @@ def search_by_ref(s, ref):
     return s
 
 if __name__ == '__main__':
-    
-    download_mp3_by_ref(s, username, passwd, '3905beTOd10339')
-
+    download_mp3_by_ref(s, username, passwd, 'bda551TVd00927', r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\lambda_functions\myMP3.mp3')
+##    download_mp3_by_ref(s, username, passwd, 'b76993TOd10547')
 # Example. Download mp3 file from www.prosodie.com by '3905beTOd10339'
 # ref number
 #download_mp3_by_ref(s, username, passwd, '3905beTOd10339')

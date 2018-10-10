@@ -1,0 +1,10 @@
+iExpense
+password
+service-desk
+teva-service-desk
+username
+dot
+virtual-assistant
+Q.A.D.
+domain
+

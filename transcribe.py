@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
-import urlparse
+from urllib.parse import urlparse
 from os.path import basename, join
 
 import boto3
@@ -21,7 +21,7 @@ def transcribe_dir(src, dst=None, language_code='en-US'):
 
     """
 
-    while src.startswith('/'):
+    while src.startswith('/'): # ensure url doesn't start with '/'
         src = src[1:]
     if not src.startswith('http'):
         bucket_name = src.split('/')[0]
@@ -32,14 +32,14 @@ def transcribe_dir(src, dst=None, language_code='en-US'):
                 .get_bucket_location(Bucket=bucket_name)['LocationConstraint']
         base_url = join('https://s3-%s.amazonaws.com' % location, bucket_name)
     else:
-        path = urlparse.urlparse(src).path
+        path = urlparse(src).path
         while path.startswith('/'):
             path = path[1:]
         bucket_name = path.split('/')[0]
         dir_name = path.replace(bucket_name, '')
         while dir_name.startswith('/'):
             dir_name = dir_name[1:]
-        base_url = join('https://%s' % urlparse.urlparse(src).netloc,
+        base_url = join('https://%s' % urlparse(src).netloc,
                         bucket_name)
     for bucket in boto3.resource('s3').buckets.all():
         if bucket.name == bucket_name:
@@ -64,6 +64,7 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
     transcribe = boto3.client('transcribe')
     if not job_name:
         job_name = basename(src).replace('.mp3', '')
+        print(job_name)
     if not dst:
         try:
             response = transcribe.start_transcription_job(
@@ -71,8 +72,10 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
                     MediaFormat='mp3', LanguageCode=language_code,
                     Settings={'ShowSpeakerLabels': True, 'MaxSpeakerLabels': 2})
         except Exception as exception:
-            return 1
+            print(exception)
+            return
     else:
+        print("Destination bucket", dst)
         try:
             response = transcribe.start_transcription_job(
                     TranscriptionJobName=job_name, Media={'MediaFileUri': src},
@@ -80,7 +83,8 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
                     OutputBucketName = dst,
                     Settings={'ShowSpeakerLabels': True, 'MaxSpeakerLabels': 2})
         except Exception as exception:
-            return 1
+            print(exception)
+            return
     return response
 
 # Example. Transcribe
@@ -108,3 +112,7 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
 #               'examplebucket')
 # or
 #transcribe_dir('examplebucket/examples/', 'examplebucket')
+#'https://s3-eu-west-1.amazonaws.com/training-rightcall'
+if __name__ == '__main__':
+    transcribe_dir('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/jobs',
+                   'https://s3.eu-west-1.amazonaws.com/transcribe.rightcall/')

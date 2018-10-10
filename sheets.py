@@ -1,12 +1,14 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from apiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
+##import requests
+##import requests_oauthlib
 
-spreadsheet_id = '1mAkAWTmLzxbU82rZotv1f6KL2fXLCPy09UNk2iIH4C0'
-range_ = 'demo'
+spreadsheet_id = '1rOyPDP1m2Yru_6kzD8NnJ95btdpupMySImFIofhv-KA'
+range_ = 'A1'
 
 def setup_api():
     """Setup the Google Sheets API"""
@@ -37,5 +39,11 @@ def append_row(values=[], spreadsheet_id=spreadsheet_id, range_=range_):
                 range=range_, valueInputOption=value_input_option,
                 insertDataOption=insert_data_option, body=body).execute()
     except Exception as exception:
-        return 1
+        return exception
     return r
+
+if __name__ == '__main__':
+    values = ['hello', 'robin', 'these', 'are', 'data', 'values']
+    r = append_row(values=values)
+    print(r)
+    
