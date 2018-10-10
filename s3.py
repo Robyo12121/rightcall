@@ -47,7 +47,7 @@ def upload_file(file_abs_path, bucket_name, key_name=None):
                     type: str).
 
     """
-
+    
     if not key_name:
         key_name = basename(file_abs_path)
     # Let's use Amazon S3
@@ -57,9 +57,9 @@ def upload_file(file_abs_path, bucket_name, key_name=None):
         try:
             s3.upload_file(file_abs_path, bucket_name, key_name)
         except Exception as exception:
-            return 1
+            raise exception
     else:
-        return 1
+        return False
 
 # Example. Upload '/tmp/example.mp3' file to Amazon S3 'examplebucket' bucket as
 # 'example.mp3' file
@@ -72,3 +72,4 @@ def upload_file(file_abs_path, bucket_name, key_name=None):
 # Example. Upload '/tmp/' directory (recursively) to Amazon S3
 # 'examplebucket' bucket
 #upload_dir('/tmp/', 'examplebucket')
+

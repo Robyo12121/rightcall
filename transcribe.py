@@ -6,7 +6,7 @@ from os.path import basename, join
 
 import boto3
 
-bucket_name = 'transcribe.rightcall'
+destination = 'transcribe.rightcall'
 
 def transcribe_dir(src, dst=None, language_code='en-US'):
     """Transcribe all mp3 file/files from directory (recursively) on AWS S3 with
@@ -20,8 +20,7 @@ def transcribe_dir(src, dst=None, language_code='en-US'):
                          file (not required | type: str | default: 'en-US').
 
     """
-
-    while src.startswith('/'): # ensure url doesn't start with '/'
+    while src.startswith('/'): 
         src = src[1:]
     if not src.startswith('http'):
         bucket_name = src.split('/')[0]
@@ -30,7 +29,7 @@ def transcribe_dir(src, dst=None, language_code='en-US'):
             dir_name = dir_name[1:]
         location = boto3.client('s3') \
                 .get_bucket_location(Bucket=bucket_name)['LocationConstraint']
-        base_url = join('https://s3-%s.amazonaws.com' % location, bucket_name)
+        base_url = join('https://s3-%s.amazonaws.com' % location, bucket_name).replace("\\", '/')
     else:
         path = urlparse(src).path
         while path.startswith('/'):
@@ -40,12 +39,13 @@ def transcribe_dir(src, dst=None, language_code='en-US'):
         while dir_name.startswith('/'):
             dir_name = dir_name[1:]
         base_url = join('https://%s' % urlparse(src).netloc,
-                        bucket_name)
+                        bucket_name).replace("\\", '/')
+        
     for bucket in boto3.resource('s3').buckets.all():
         if bucket.name == bucket_name:
             for key in bucket.objects.all():
                 if key.key.startswith(dir_name) and key.key.endswith('.mp3'):
-                    url = join(base_url, key.key)
+                    url = join(base_url, key.key).replace("\\", '/')
                     transcribe_mp3(url, dst)
 
 def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
@@ -54,7 +54,8 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
         src -- S3 location of the src mp3 file (required | type: str). Example:
                'https://s3-eu-west-1.amazonaws.com/examplebucket/example.mp3';
         dst -- S3 bucket where the transcription is stored (not required |
-               type: str);
+               type: str). Example:
+               'example-bucket';
         job_name -- the name of the job (not required | type: str);
         language_code -- language code for the language used in the input mp3
                          file (not required | type: str | default: 'en-US').
@@ -64,7 +65,6 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
     transcribe = boto3.client('transcribe')
     if not job_name:
         job_name = basename(src).replace('.mp3', '')
-        print(job_name)
     if not dst:
         try:
             response = transcribe.start_transcription_job(
@@ -75,7 +75,6 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
             print(exception)
             return
     else:
-        print("Destination bucket", dst)
         try:
             response = transcribe.start_transcription_job(
                     TranscriptionJobName=job_name, Media={'MediaFileUri': src},
@@ -114,5 +113,8 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
 #transcribe_dir('examplebucket/examples/', 'examplebucket')
 #'https://s3-eu-west-1.amazonaws.com/training-rightcall'
 if __name__ == '__main__':
-    transcribe_dir('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/jobs',
-                   'https://s3.eu-west-1.amazonaws.com/transcribe.rightcall/')
+##    transcribe_mp3('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/jobs/b76152TVd00246.mp3',
+##                   'transcribe.rightcall', job_name='robins_test')
+##    transcribe_dir('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/jobs',
+##                   'transcribe.rightcall')
+
