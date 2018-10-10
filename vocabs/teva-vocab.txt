@@ -7,4 +7,16 @@ dot
 virtual-assistant
 Q.A.D.
 domain
+Oracle
+teva
+lock 
+unlock
+login
+O.K
+L.M.S
+unlocking
+tried 
+logged on
+logged in
+desktop
 

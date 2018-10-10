@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from os import walk
-from os.path import basename, exists, isfile, join
+from os.path import basename, exists, isfile, join, dirname
 import sys
 
 import boto3
@@ -73,3 +73,8 @@ def upload_file(file_abs_path, bucket_name, key_name=None):
 # 'examplebucket' bucket
 #upload_dir('/tmp/', 'examplebucket')
 
+if __name__ == '__main__':
+    path = dirname(__file__)
+    cont_dir = 'mp3s'
+    path = join(path, cont_dir).replace('\\', '/')
+    upload_dir(path, bucket_name)

@@ -26,6 +26,8 @@ def get_sentiment(text, language_code='en'):
     sentiment = r['Sentiment'].lower()
     return sentiment
 
+
+
 # Example. Get sentiment of text below:
 # "I ordered a small and expected it to fit just right but it was a little bit
 # more like a medium-large. It was great quality. It's a lighter brown than

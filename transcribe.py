@@ -1,10 +1,10 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-
 from urllib.parse import urlparse
 from os.path import basename, join
+import uuid
 
 import boto3
+
+
 
 destination = 'transcribe.rightcall'
 
@@ -64,13 +64,15 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
 
     transcribe = boto3.client('transcribe')
     if not job_name:
-        job_name = basename(src).replace('.mp3', '')
+        #job_name = basename(src).replace('.mp3', '').join([':::', str(uuid.uuid4())])
+        job_name = '--'.join([basename(src).replace('.mp3',''), str(uuid.uuid4())])
     if not dst:
         try:
             response = transcribe.start_transcription_job(
                     TranscriptionJobName=job_name, Media={'MediaFileUri': src},
                     MediaFormat='mp3', LanguageCode=language_code,
-                    Settings={'ShowSpeakerLabels': True, 'MaxSpeakerLabels': 2})
+                    Settings={'ShowSpeakerLabels': True, 'MaxSpeakerLabels': 2,
+                              'VocabularyName': "teva-vocab"})
         except Exception as exception:
             print(exception)
             return
@@ -80,7 +82,8 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
                     TranscriptionJobName=job_name, Media={'MediaFileUri': src},
                     MediaFormat='mp3', LanguageCode=language_code,
                     OutputBucketName = dst,
-                    Settings={'ShowSpeakerLabels': True, 'MaxSpeakerLabels': 2})
+                    Settings={'ShowSpeakerLabels': True, 'MaxSpeakerLabels': 2,
+                              'VocabularyName': "teva-vocab"})
         except Exception as exception:
             print(exception)
             return
@@ -113,8 +116,8 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
 #transcribe_dir('examplebucket/examples/', 'examplebucket')
 #'https://s3-eu-west-1.amazonaws.com/training-rightcall'
 if __name__ == '__main__':
-##    transcribe_mp3('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/jobs/b76152TVd00246.mp3',
-##                   'transcribe.rightcall', job_name='robins_test')
-##    transcribe_dir('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/jobs',
+    transcribe_mp3('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/bd1b2dTVd10549.mp3',
+                   'transcribe.rightcall')
+##    transcribe_dir('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/',
 ##                   'transcribe.rightcall')
 

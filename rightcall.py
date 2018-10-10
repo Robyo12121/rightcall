@@ -29,27 +29,28 @@ def main(transcribe_bucket_name, mp3_bucket_name):
             for key in bucket.objects.all(): # Loop through keys
                 print(key)
                 if key.key.endswith('.json'): # Find json files
-                    print(key.key)
+                    print(f"Key: {key.key}")
                     r = {}
                     # Get reference number
                     reference = basename(key.key).replace('.json', '') # Find name of file
                     r['ref'] = reference
-                    print(r)
+                    print(f"r: {r}")
                     # Get URL
                     location = boto3.client('s3') \
                             .get_bucket_location(
-                            Bucket=mp3_bucket_name)['LocationConstraint'] # Find AWS region of bucket
-                    print(location)
-                    base_url = join('https://s3-%s.amazonaws.com' % location, # Create URL for bucket in same region for mp3 files
-                            mp3_bucket_name)
-                    print(base_url)
-                    url = join(base_url, key.key.replace('.json', '.mp3'))
-                    print(url)
+                            Bucket=mp3_bucket_name)['LocationConstraint'] 
+                    print(f"Location: {location}")
+                    base_url = join('https://s3-%s.amazonaws.com' % location, 
+                            mp3_bucket_name).replace("\\", '/')
+                    print(f"Base URL: {base_url}")
+                    url = join(base_url, key.key.replace('.json', '.mp3')).replace("\\", '/')
+                    print(f"MP3 URL: {url}")
                     r['url'] = url
+                    print(f"r: {r}")
                     # Download json file
                     try:
                         s3.Bucket(transcribe_bucket_name) \
-                          .download_file(key.key, key.key) # download the file
+                          .download_file(key.key, key.key) 
                     except Exception as exception:
                         print(exception)
                     # Get text
@@ -67,9 +68,11 @@ def main(transcribe_bucket_name, mp3_bucket_name):
                     # Get sentiment
                     sentiment = get_sentiment(text)
                     r['sentiment'] = sentiment
+                    print(f"r sentiment: {r['sentiment']}")
                     # Check promotion
                     promo = check_promo(text)
                     r['promo'] = promo
+                    print(f"r promo: {r['promo']}")
                     # Save to Gooogle Sheets
                     values = [r['ref'], r['text'], r['promo'], r['sentiment'],
                               r['url']]
