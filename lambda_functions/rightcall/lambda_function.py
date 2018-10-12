@@ -1,19 +1,21 @@
 from urllib.parse import unquote_plus
 import json
 import boto3
+import os
 
 from transcribe import transcribe_mp3
 from comprehend import get_sentiment
 from text import check_promo
-from sheets import append_row
 
 
-#DESTINATION = os.environ.get('DESTINATION')
-#SOURCE = os.environ.get('SOURCE')
+TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
+MP3S = os.environ.get('MP3S')
+COMPREHEND = os.environ.get('COMPREHEND')
 
-TRANSCRIPTS = 'transcribe.rightcall'
-MP3S = 'mp3.rightcall'
-print(MP3S, TRANSCRIPTS)
+##TRANSCRIPTS = 'transcribe.rightcall'
+##MP3S = 'mp3.rightcall'
+##COMPREHEND = 'comprehend.rightcall'
+##print(MP3S, TRANSCRIPTS, COMPREHEND)
 
 
 def Transcribe(event):
@@ -22,7 +24,7 @@ def Transcribe(event):
     Get URI of file and send it to transcribe
     """
     bucket = event['Records'][0]['s3']['bucket']
-    print(bucket['name'])
+    print("Bucket Event: {}".format(bucket['name']))
     if bucket['name'] == MP3S:
         key = unquote_plus(event['Records'][0]['s3']['object']['key'], encoding='utf-8')
         print(bucket['name'], key)
@@ -30,7 +32,7 @@ def Transcribe(event):
         '.amazonaws.com/'+ bucket['name'] + '/' + key
         print(uri)
     else:
-        return "Wrong Bucket"
+        print("Wrong Bucket")
     try:
         response = transcribe_mp3(uri, TRANSCRIPTS)
         return response
@@ -66,8 +68,11 @@ def Comprehend(event):
 
     try:
         text = data['results']['transcripts'][0]['transcript']
-    except Exception as exception:
-        raise(exception)
+    except TextSizeLimitExceededException as toobig:
+        raise toobig
+    except Exception as e:
+        raise e
+        
     r = {}
     r['ref'] = event['detail']['TranscriptionJobName'].split('--')[0]
     r['text'] = text
@@ -79,10 +84,17 @@ def Comprehend(event):
     promo = check_promo(text)
     r['promo'] = promo
     print("r promo: {}".format(r['promo']))
-    # Save to Google Sheets
-    values = [r['ref'], r['text'], r['promo'], r['sentiment']]#,
-              #r['url']]
-    append_row(values)
+    # Save to json file in 'comprehend.rightcall' bucket
+    try:
+        response = s3.put_object(Body=json.dumps(r, indent=2),
+                                 Bucket=COMPREHEND,
+                                 Key=event['detail']['TranscriptionJobName'])
+    except Exception as e:
+        raise e
+##    # Save to Google Sheets
+##    values = [r['ref'], r['text'], r['promo'], r['sentiment']]#,
+##              #r['url']]
+##    append_row(values)
 
 def event_type_transcribe_job_status(event):
     """Check if event is from Cloudwatch

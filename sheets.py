@@ -4,8 +4,6 @@
 from apiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
-##import requests
-
 
 spreadsheet_id = '1rOyPDP1m2Yru_6kzD8NnJ95btdpupMySImFIofhv-KA'
 range_ = 'A1'
