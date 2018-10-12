@@ -73,7 +73,7 @@ def main(transcribe_bucket_name, mp3_bucket_name):
                     promo = check_promo(text)
                     r['promo'] = promo
                     print(f"r promo: {r['promo']}")
-                    # Save to Gooogle Sheets
+                    # Save to Google Sheets
                     values = [r['ref'], r['text'], r['promo'], r['sentiment'],
                               r['url']]
                     append_row(values)

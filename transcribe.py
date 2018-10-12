@@ -116,8 +116,9 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
 #transcribe_dir('examplebucket/examples/', 'examplebucket')
 #'https://s3-eu-west-1.amazonaws.com/training-rightcall'
 if __name__ == '__main__':
+    TRANSCRIPTS = 'transcribe.rightcall'
     transcribe_mp3('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/bd1b2dTVd10549.mp3',
-                   'transcribe.rightcall')
+                   TRANSCRIPTS)
 ##    transcribe_dir('https://s3-eu-west-1.amazonaws.com/mp3.rightcall/',
 ##                   'transcribe.rightcall')
 

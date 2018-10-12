@@ -108,3 +108,6 @@ venv.bak/
 
 # .JSON
 *.json
+
+# ZIP
+*.zip
