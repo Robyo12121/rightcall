@@ -40,6 +40,7 @@ def get_sentiment(text, language_code='en'):
 # get_sentiment(text)
 
 
+
 if __name__ == '__main__':
     text = """I ordered a small and expected it to fit just right but it was a little bit
  more like a medium-large. It was great quality. It's a lighter brown than

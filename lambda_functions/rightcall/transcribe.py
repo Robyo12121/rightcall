@@ -1,8 +1,7 @@
-import urllib
-from os.path import basename, join
-import uuid
-
+from os.path import basename
+from id_gen import id_generator
 import boto3
+
 
 def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
     """Transcribe mp3 file with AWS Transcribe.
@@ -19,23 +18,19 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
     """
     transcribe = boto3.client('transcribe')
     if not job_name:
-        job_name = '--'.join([basename(src).replace('.mp3',''), str(uuid.uuid4())])
+        job_name = '--'.join(
+            [basename(src).replace('.mp3', ''), id_generator()])
 
     try:
         response = transcribe.start_transcription_job(
-                TranscriptionJobName=job_name, Media={'MediaFileUri': src},
+                TranscriptionJobName=job_name,
+                Media={'MediaFileUri': src},
                 MediaFormat='mp3', LanguageCode=language_code,
-                OutputBucketName = dst,
+                OutputBucketName=dst,
                 Settings={'ShowSpeakerLabels': True, 'MaxSpeakerLabels': 2,
                           'VocabularyName': "teva-vocab"})
     except Exception as exception:
         print(exception)
         return
-    
+
     return response
-
-
-
-
-
-

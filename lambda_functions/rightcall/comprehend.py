@@ -22,11 +22,9 @@ def get_sentiment(text, language_code='en'):
     try:
         r = comprehend.detect_sentiment(Text=text, LanguageCode='en')
     except Exception as exception:
-        print(exception)
+        raise exception
     sentiment = r['Sentiment'].lower()
     return sentiment
-
-
 
 # Example. Get sentiment of text below:
 # "I ordered a small and expected it to fit just right but it was a little bit

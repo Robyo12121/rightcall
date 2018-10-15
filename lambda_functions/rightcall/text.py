@@ -3,6 +3,7 @@
 
 import re
 
+
 def check_promo(text):
     """Inspects text and returns an inference of the promotion
     ('success', 'none', 'fail').
