@@ -115,3 +115,6 @@ venv.bak/
 # CSV
 *.csv
 !/vocabs/teva-vocab-csv.csv
+
+# XLSX
+*.xlsx
