@@ -8,14 +8,18 @@ import datetime
 import pandas as pd
 from bs4 import BeautifulSoup
 from requestium import Session
+from selenium.webdriver.common.action_chains import ActionChains
+from dotenv import load_dotenv
 
+load_dotenv()
+username = os.environ.get('PROSODIE_USERNAME')
+passwd = os.environ.get('PROSODIE_PASSWORD')
 print(sys.version)
 
 
 def change_date_format(date):
     try:
-        correct_string = date.strptime(str(date.date()), 
-                            '%Y-%m-%d').strftime('%d-%m-%Y')
+        correct_string = date.strptime(str(date.date()), '%Y-%m-%d').strftime('%m-%d-%Y')
         return correct_string
     except Exception as e:
         raise e
@@ -32,24 +36,36 @@ def change_time_format(date):
         raise e
 
 
-def setup():
-    d = datetime.datetime.now()
-    start_date = change_date_format(d)  # '07-01-2018'
-    start_time = change_time_format(d) # '12:00 AM'
+def set_range(now):
+    """
+    Takes current datetime and finds the nearest, previous half hour.
+    Returns the appropriate start and end times and date
+    """
+    # Format: '10-19-2018'
+    # Format: '12:00 AM'
+
+    def ceil_dt(dt, delta):
+        """Round up to the nearest half hour"""
+        return dt + (datetime.datetime.min - dt) % delta
+
+    hour_ago = now - datetime.timedelta(minutes=60)
+    rounded = ceil_dt(hour_ago, datetime.timedelta(minutes=30))
+
+    start_date = change_date_format(rounded)
+    start_time = change_time_format(rounded)
     thirty_mins = datetime.timedelta(minutes=30)
     end_date = start_date
-    end_time = change_time_format(d + thirty_mins)
-    print(end_time)
-    # end_date = '07-01-2018'
-    # end_time = '11:59 PM'
+    end_time = change_time_format(rounded + thirty_mins)
+    return (start_date, start_time, end_date, end_time)
 
-    print(start_date)
-    # driver = 'chromedriver.exe'
-    # s = Session(webdriver_path=driver,
-    #             browser='chrome',
-    #             default_timeout=15,
-    #             webdriver_options={'arguments': ['headless']})
-    # return s
+
+def setup():
+    driver = r'C:\Users\RSTAUNTO\Desktop\chromedriver.exe'
+    s = Session(webdriver_path=driver,
+                browser='chrome',
+                default_timeout=15,
+                webdriver_options={'arguments': ['headless']})
+    return s
 
 
 def download_mp3(s, path=None, ref=None):
@@ -146,6 +162,50 @@ def download_mp3_by_csv(s, username, passwd, csv_path, download_dir=None):
     s.driver.close()
 
 
+def download_all_csv(s, username, passwd, download_dir=None):
+
+    s = setup()
+    d = datetime.datetime.now()
+    s = login(s, username, passwd)
+    search_range = set_range(d)
+    print(search_range[0], search_range[1], search_range[2], search_range[3])
+    s = search_by_range(s, search_range[0],
+                        search_range[1],
+                        search_range[2],
+                        search_range[3])
+    s = search_by_language(s, language="_EN")
+    # s.driver.execute_script("zipItems();")
+    csvB = s.driver.ensure_element_by_id('csvButton')
+    if csvB.is_displayed():
+        print("csvB is visible")
+        csvB.ensure_click()
+    else:
+        print("Not Visible")
+    yes = s.driver.ensure_element_by_id("button-1006")
+    # yes = s.driver.ensure_element_by_css_selector("#button-1006")
+    # yes.ensure_click()
+    # full_xpath = """//div[@id='messagebox-1001']/div[@id='messagebox-1001-toolbar']/div[@id='messagebox-1001-toolbar-innerCt']/div[@id='messagebox-1001-toolbar-targetEl']/a[@id='button-1006'])"""
+    # xpath_messagebox = "//div[@id='messagebox-1001']"
+    # css_sel_messagebox = '.x-css-shadow'
+    # yes = s.driver.ensure_element_by_css_selector(css_sel_messagebox)
+    # if yes.is_displayed():
+    #     print("Yes is visible")
+    #     yes.ensure_click()
+    # else:
+    #     print("Yes button not visible")
+    # s.driver.ensure_element_by_id('button-1006').ensure_click()
+    s.driver.close()
+    # return element
+
+
+def check_num_results(s):
+    url = 'https://enregistreur.prosodie.com/odigo4isRecorder/' \
+          'EntryPoint?serviceName=CriteresMessagesHandler&lang=en'
+    s.driver.get(url)
+    result = s.driver.ensure_element_by_id('resultLabelId').get_attribute("innerText")
+    return result
+
+
 def login(s, username, passwd):
     """Login to www.prosodie.com with username/passwd pair and return session.
     Input:
@@ -201,6 +261,20 @@ def search_by_range(s, start_date=None, start_time=None, end_date=None,
     return s
 
 
+def search_by_language(s, language=None):
+    """
+    Filter results by language
+    Options: "_EN" : English, "_ES" : Spanish etc.
+    """
+    url = 'https://enregistreur.prosodie.com/odigo4isRecorder/' \
+          'EntryPoint?serviceName=CriteresMessagesHandler&lang=en'
+    s.driver.get(url)
+    if language:
+        s.driver.ensure_element_by_name('criteres').send_keys(language)
+    s.driver.ensure_element_by_id('button-1009').click()
+    return s
+
+
 def search_by_ref(s, ref):
     """Search record on www.prosodie.com by ref number and return session.
     Input:
@@ -221,9 +295,11 @@ def search_by_ref(s, ref):
 
 
 if __name__ == '__main__':
-
-    d = datetime.datetime.now()
-    setup()
+    s = setup()
+    element = download_all_csv(s, username, passwd)
+    # print(element)
+    # print(type(element))
+    # download_mp3_by_csv(s, username, passwd, )
     # download_mp3_by_ref(s, username, passwd, 'bda551TVd00927',
     # r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\lambda_functions\myMP3.mp3')
     # download_mp3_by_ref(s, username, passwd, 'b76993TOd10547')

@@ -121,3 +121,6 @@ docs/*
 
 # XLSX
 *.xlsx
+
+# STACKDUMP
+*.stackdump

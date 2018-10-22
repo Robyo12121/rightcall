@@ -4,11 +4,14 @@
 import os
 import sys
 import time
-print(sys.version)
 import pandas as pd
 from bs4 import BeautifulSoup
 from requestium import Session
 from dotenv import load_dotenv
+
+print(sys.version)
+
+
 load_dotenv()
 username = os.environ.get('PROSODIE_USERNAME') 
 passwd = os.environ.get('PROSODIE_PASSWORD')
@@ -22,6 +25,7 @@ s = Session(webdriver_path=driver,
             browser='chrome',
             default_timeout=15,
             webdriver_options={'arguments': ['headless']})
+
 
 def download_mp3(s, path=None, ref=None):
     """Download mp3 file from www.prosodie.com page and return session.
@@ -184,9 +188,9 @@ def search_by_ref(s, ref):
     return s
 
 if __name__ == '__main__':
-##    download_mp3_by_ref(s, username, passwd, 'bda551TVd00927', r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\lambda_functions\myMP3.mp3')
+    download_mp3_by_ref(s, username, passwd, 'c994bcTOd00783', r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\mp3s\Promo\c994bcTOd00783.mp3')
 ##    download_mp3_by_ref(s, username, passwd, 'b76993TOd10547')
-    download_mp3_by_csv(s, username, passwd, 'csvs/toget.csv', download_dir='mp3s')
+##    download_mp3_by_csv(s, username, passwd, 'csvs/toget.csv', download_dir='mp3s')
 # Example. Download mp3 file from www.prosodie.com by '3905beTOd10339'
 # ref number
 #download_mp3_by_ref(s, username, passwd, '3905beTOd10339')
