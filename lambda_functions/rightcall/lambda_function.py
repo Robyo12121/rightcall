@@ -100,6 +100,7 @@ def Comprehend(event):
     r = {}
     r['ref'] = event['detail']['TranscriptionJobName'].split('--')[0]
     r['text'] = text
+
     # Get sentiment using AWS Comprehend
     sentiment = get_sentiment(text)
     r['sentiment'] = sentiment
