@@ -28,4 +28,7 @@ spell-for-me,spell-your-username,
 I-will-find-you,find-you,
 the-referenced-account,spell-your-last-name,
 currently-locked-out,old-one,capital
-with-capital,,
+with-capital,country-code,tool
+chat,chat-function,service-now
+teva-net,new-tool,chat-function
+ask-it,ask-I.T.,pink-button
