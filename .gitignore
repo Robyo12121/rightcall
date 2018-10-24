@@ -124,3 +124,6 @@ docs/*
 
 # STACKDUMP
 *.stackdump
+
+# data/ folder
+data/*

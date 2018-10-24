@@ -140,6 +140,7 @@ def Rightcall(event):
     take appropriate action"""
     response = {}
     if event_type_transcribe_job_status(event):
+        logger.info("Transcribe job event received. Sending to Comprehend.")
         response = Comprehend(event)
     else:
         logger.info("New mp3 in bucket. Sending to Transcribe")

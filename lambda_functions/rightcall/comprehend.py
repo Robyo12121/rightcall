@@ -3,9 +3,19 @@
 
 import boto3
 from sys import getsizeof
+import logging
+import os
 
-# COMPREHEND_SIZE = os.environ.get(COMPREHEND_SIZE_LIMIT)
-COMPREHEND_SIZE = 4974
+# COMPREHEND_SIZE_LIMIT = int(os.environ.get('COMPREHEND_SIZE_LIMIT'))
+COMPREHEND_SIZE_LIMIT = 4974
+
+# Logging
+logging.basicConfig()
+logger = logging.getLogger()
+if os.getenv('LOG_LEVEL') == 'DEBUG':
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
 
 
 def sum_sentiments(ResultList, weights=None):
@@ -17,17 +27,20 @@ def sum_sentiments(ResultList, weights=None):
     ensures short strings with a particular sentiment
     don't overpower the overall results.
     """
+    logger.info("Summing sentiments")
     sums = {'Positive': 0,
             'Negative': 0,
             'Neutral': 0,
             'Mixed': 0}
     if weights is None:
+        logger.info("No weights passed")
         for result in ResultList:
             for k in sums.keys():
                 sums[k] += result['SentimentScore'][k]
     else:
+        logger.info("Using weights")
         for result in ResultList:
-            # print(f"Working on {result}")
+            logger.debug("Working on {}".format(result))
             for k in sums.keys():
                 sums[k] += result['SentimentScore'][k] * \
                                     weights[result['Index']]
@@ -43,6 +56,7 @@ def chunkify(string, chunk_size=4970):
                   'weight': <chunkweight>},
             '1': { etc}
             """
+        logger.info("Chunkifying...")
         chunks = {}
         weights = {}
         start = 0
@@ -57,6 +71,7 @@ def chunkify(string, chunk_size=4970):
 
 
 def best_sentiment(sent_dict):
+    logger.info("Finding best sentiment")
     sentiment = None
     highest = 0
     for k, v in sent_dict.items():
@@ -80,20 +95,21 @@ def get_sentiment(text, language_code='en'):
 
     """
     comprehend = boto3.client('comprehend')
-
-    if getsizeof(text) >= COMPREHEND_SIZE:
-        print("Too big! Proceeding with chunkification")
-        chunks, weights = chunkify(text, COMPREHEND_SIZE)
+    logger.info("Getting sentiment...")
+    if getsizeof(text) >= COMPREHEND_SIZE_LIMIT:
+        logger.debug("Too big! Proceeding with chunkification")
+        chunks, weights = chunkify(text, COMPREHEND_SIZE_LIMIT)
         try:
             r = comprehend.batch_detect_sentiment(
                             TextList=[val['text'] for val in chunks.values()],
                             LanguageCode='en')
-            # print(f"Result List: {r['ResultList']}")
+            logger.debug("Result List: {}".format(r['ResultList']))
         except Exception as e:
+            logger.error(str(e))
             raise e
         else:
             sums = sum_sentiments(r['ResultList'], weights)
-            # print(f"Sums: {sums}")
+            logger.debug("Sums: {}".format(sums))
             sentiment = best_sentiment(sums).lower()
 
     else:
@@ -101,6 +117,7 @@ def get_sentiment(text, language_code='en'):
             r = comprehend.detect_sentiment(Text=text, LanguageCode='en')
             sentiment = r['Sentiment'].lower()
         except Exception as e:
+            logger.error(str(e))
             raise e
     return sentiment
 
