@@ -1,4 +1,3 @@
-from urllib.parse import unquote_plus
 import json
 import boto3
 import os
@@ -37,17 +36,19 @@ def Transcribe(event):
     Get URI of file and send it to transcribe
     """
     isSuccessful = False
-    bucket = event['Records'][0]['s3']['bucket']
-    logger.info("Bucket Event: {}".format(str(bucket['name'])))
-    if bucket['name'] == MP3S:
-        key = unquote_plus(
-            event['Records'][0]['s3']['object']['key'],
-            encoding='utf-8')
+    body = json.loads(event['Records'][0]['body'])['Records'][0]
+    bucket = body['s3']['bucket']['name']
+    key = body['s3']['object']['key']
+    logger.info("Bucket Event: {}".format(str(bucket)))
+    if bucket == MP3S:
+        # key = unquote_plus(
+        #     event['Records'][0]['s3']['object']['key'],
+        #     encoding='utf-8')
         logger.info("Bucket: {}, Key: {}".format(
-            str(bucket['name']),
+            str(bucket),
             str(key)))
         uri = 'https://s3-' + event['Records'][0]['awsRegion'] + \
-            '.amazonaws.com/' + bucket['name'] + '/' + key
+            '.amazonaws.com/' + bucket + '/' + key
         logger.info("URI: {}".format(str(uri)))
     else:
         logger.info("Wrong Bucket")
@@ -98,7 +99,7 @@ def Comprehend(event):
         raise e
 
     r = {}
-    r['ref'] = event['detail']['TranscriptionJobName'].split('--')[0]
+    r['reference_number'] = event['detail']['TranscriptionJobName'].split('--')[0]
     r['text'] = text
 
     # Get sentiment using AWS Comprehend
@@ -107,7 +108,7 @@ def Comprehend(event):
     logger.info("Sentiment: {}".format(str(r['sentiment'])))
     # Check promotion
     promo = check_promo(text)
-    r['promo'] = promo
+    r['promotion'] = promo
     logger.info("r promo: {}".format(str(r['promo'])))
     # Save to json file in 'comprehend.rightcall' bucket
     try:
@@ -135,6 +136,18 @@ def event_type_transcribe_job_status(event):
         return False
 
 
+def event_type_sqs_s3_new_object(event):
+    """
+    Check if event is a new object event from s3 delivered by sqs
+    """
+    if 'Records' in event.keys():
+        if event['Records'][0]['eventSource'] == 'aws:sqs':
+            return True
+        else:
+            return False
+    return False
+
+
 def Rightcall(event):
     """Determine event type (S3 or Cloudwatch) and
     take appropriate action"""
@@ -142,8 +155,8 @@ def Rightcall(event):
     if event_type_transcribe_job_status(event):
         logger.info("Transcribe job event received. Sending to Comprehend.")
         response = Comprehend(event)
-    else:
-        logger.info("New mp3 in bucket. Sending to Transcribe")
+    elif event_type_sqs_s3_new_object(event):
+        logger.info("New mp3 uploaded. Sending to Transcribe.")
         response = Transcribe(event)
     return response
 
@@ -210,5 +223,45 @@ if __name__ == '__main__':
                   }
                ]
             }
-    response = lambda_handler(s3_new_object_event, None)
+    sqs_test_event = {
+        "Records": [
+            {
+                "messageId": "4227a528-e786-46a7-8906-0c6a9260ebc0",
+                "receiptHandle": "AQEBDOvsT+wgZOTQzDFAgZiJXIREBOMC/X9lyyQXnhFbVZLSwmbGPe5ZkowPPUpIv5ZnEWAUIDt+YsDNsOlaV+uDXBh7/JKG09/m4kuH3CB8XAbXnNCH2X0HDCf+cwAN8sLxBGQtcZ5tcYyPD+ZwD55qSeeXfK6RVVBrOaLZHush75ZO102F8ciYzyQHosylXsD3lTG1HJaVsMyyAEqBZbWcO4U3p3U3NxHapKbOB80IrwdJ4wgjVGgasIEsTIH+sMlImjjowyM6hbnfvU8B6pIAXyHrnqPCCgrnAHL49DjBFIauzU4F528RVSAGbM9Trm9MkmdQNW5w8HWw8GfELjz+O0aRDl3Cylrti1wAk/Du/h9Co+F00vd/q3f+vGfmuJSuH2aIOkSUGFJ2TCPkPAQ7TA==",
+                "body": "{\"Service\":\"Amazon S3\",\"Event\":\"s3:TestEvent\",\"Time\":\"2018-10-25T10:21:09.859Z\",\"Bucket\":\"mp3.rightcall\",\"RequestId\":\"B30EA916318276B2\",\"HostId\":\"+7iVNqh64HZ8/+QSK4i5CV5WtiYIGi8Xgpsb6jXYGcPPtUB0SdjECoWenb/vK3+Duuf1qENMOm8=\"}",
+                "attributes": {
+                    "ApproximateReceiveCount": "137",
+                    "SentTimestamp": "1540462870055",
+                    "SenderId": "AIDAJVEO32BJMF27H2JKW",
+                    "ApproximateFirstReceiveTimestamp": "1540462870055"
+                        },
+                "messageAttributes": {},
+                "md5OfBody": "802614776f1fdea805f34291a274c685",
+                "eventSource": "aws:sqs",
+                "eventSourceARN": "arn:aws:sqs:eu-west-1:868234285752:RightcallTranscriptionJobs",
+                "awsRegion": "eu-west-1"
+            }
+        ]
+    }
+    sqs_event = {
+            "Records": [
+             {
+                "messageId": "1b498e27-3a64-4847-89bd-e5026604b212",
+                "receiptHandle": "AQEBJuUjL8Q2Z93UOS03uX/ynEUWt35ySRWqgFltcsiyv3bcSqeM+HdQc/aoNzIYHf3Z5gCtMpXRZ3EFo2Z/jCJHQAX5e8lH/Wot8VvZ3iBUzVL/GgV5Sg5mU/i+XrtDvuprzE2uvrDYMIAuzUfzoYUBJyPBn6uZRed/0gfK7XhXSeiBhRnMo1Qjjzuguiton6inehUaDUK3Nre+h5+yDDjU/ZBZmFfGi+mfUIJ6+z6n6MbxqC3yF8Oh2zOWF5QavEk9dxVAT/+t1p6wtagvXjT0od1WHZ1U8K9aUzSFePcdA+/hr0SIrpcpO1011/9iJtT837o+AvgONxsg7HEM9oUsAO/nH/erQVn45/q+Kdq57iVKHkzLNM+SJM6CQcHx9UlCdrZoT7IricptnlOGz6MTjQ==",
+                "body": "{\"Records\":[{\"eventVersion\":\"2.0\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"eu-west-1\",\"eventTime\":\"2018-10-26T09:30:14.124Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:AIDAJFUNXNZ3MF2LQLH4O\"},\"requestParameters\":{\"sourceIPAddress\":\"185.31.48.30\"},\"responseElements\":{\"x-amz-request-id\":\"CC8C87308642EBE5\",\"x-amz-id-2\":\"+yybnPTMtJ4vslctD/uUXfeI//dT/4qbCF8c6O5QaSzAbWSsr4fB164HcgbkQT3jol9Ul2kn0g8=\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"2116bf90-74fc-4c00-a60d-d3c2c5a35132\",\"bucket\":{\"name\":\"mp3.rightcall\",\"ownerIdentity\":{\"principalId\":\"A2VMRRM44J4WYZ\"},\"arn\":\"arn:aws:s3:::mp3.rightcall\"},\"object\":{\"key\":\"jobs/c9c4bfTOd00994.mp3\",\"size\":784656,\"eTag\":\"8c31f6b56802fa76346d04cdcfdeb430\",\"sequencer\":\"005BD2DEA55CFDC057\"}}}]}",
+                "attributes": {
+                   "ApproximateReceiveCount": "1",
+                   "SentTimestamp": "1540546214173",
+                   "SenderId": "AIDAJVEO32BJMF27H2JKW",
+                   "ApproximateFirstReceiveTimestamp": "1540546214174"
+                   },
+                "messageAttributes": {},
+                "md5OfBody": "94f778ba57b38e0080a56466c7727f96",
+                "eventSource": "aws:sqs",
+                "eventSourceARN": "arn:aws:sqs:eu-west-1:868234285752:RightcallTranscriptionJobs",
+                "awsRegion": "eu-west-1"
+                }
+            ]
+        }
+    response = lambda_handler(sqs_event, None)
     print(response)
