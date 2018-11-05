@@ -3,9 +3,9 @@ import boto3
 import os
 import logging
 
-from transcribe import transcribe_mp3
-from comprehend import get_sentiment
-from text import check_promo
+import text
+import comprehend
+import transcribe
 
 # Logging
 logging.basicConfig()
@@ -36,7 +36,20 @@ def Transcribe(event):
     Get URI of file and send it to transcribe
     """
     isSuccessful = False
-    body = json.loads(event['Records'][0]['body'])['Records'][0]
+    try:
+        body = json.loads(event['Records'][0]['body'])
+    except Exception as e:
+        raise e
+    if 'Records' not in body:
+        logger.error('Records not in Body, likely s3 test event. Ignoring')
+        logger.info("""Doing nothing so that this message will be deleted
+        from queue.""")
+        return False
+    else:
+        if len(body['Records']) > 1:
+            logger.error("More than one record. May be missing a job here!")
+        body = body['Records'][0]
+
     bucket = body['s3']['bucket']['name']
     key = body['s3']['object']['key']
     logger.info("Bucket Event: {}".format(str(bucket)))
@@ -53,7 +66,7 @@ def Transcribe(event):
     else:
         logger.info("Wrong Bucket")
     try:
-        response = transcribe_mp3(uri, TRANSCRIPTS)
+        response = transcribe.transcribe_mp3(uri, TRANSCRIPTS)
         logger.info(response)
         job = response['TranscriptionJob']['TranscriptionJobName']
 
@@ -93,23 +106,28 @@ def Comprehend(event):
 
     # Give the transcript text to comprehend.py
     try:
-        text = data['results']['transcripts'][0]['transcript']
+        transcript_text = data['results']['transcripts'][0]['transcript']
     except Exception as e:
         logger.error(str(e))
         raise e
 
     r = {}
-    r['reference_number'] = event['detail']['TranscriptionJobName'].split('--')[0]
-    r['text'] = text
+    r['reference_number'] = event['detail']['TranscriptionJobName'] \
+        .split('--')[0]
+    r['text'] = transcript_text
 
     # Get sentiment using AWS Comprehend
-    sentiment = get_sentiment(text)
+    sentiment = comprehend.get_sentiment(transcript_text)
     r['sentiment'] = sentiment
     logger.info("Sentiment: {}".format(str(r['sentiment'])))
     # Check promotion
-    promo = check_promo(text)
+    promo = text.check_promo(transcript_text)
     r['promotion'] = promo
-    logger.info("r promo: {}".format(str(r['promo'])))
+    logger.info("r promo: {}".format(str(r['promotion'])))
+    # Get entities
+    r['entities'] = comprehend.get_entities(transcript_text)
+    # Get Key Phrases
+    r['keyphrases'] = comprehend.get_key_phrases(transcript_text)
     # Save to json file in 'comprehend.rightcall' bucket
     try:
         response = s3.put_object(Body=json.dumps(r, indent=2),
@@ -140,6 +158,9 @@ def event_type_sqs_s3_new_object(event):
     """
     Check if event is a new object event from s3 delivered by sqs
     """
+    body = json.loads(event['Records'][0]['body'])
+    if 'Records' not in body:
+        return False
     if 'Records' in event.keys():
         if event['Records'][0]['eventSource'] == 'aws:sqs':
             return True
@@ -158,6 +179,9 @@ def Rightcall(event):
     elif event_type_sqs_s3_new_object(event):
         logger.info("New mp3 uploaded. Sending to Transcribe.")
         response = Transcribe(event)
+    else:
+        logger.info("Unknown Event Type. Ignoring")
+        response = False
     return response
 
 
@@ -263,5 +287,25 @@ if __name__ == '__main__':
                 }
             ]
         }
-    response = lambda_handler(sqs_event, None)
+    unhandled = {
+        "Records": [
+            {
+                "messageId": "861e8a55-322d-47a0-b17b-0c291904206c",
+                "receiptHandle": "AQEBysB8VVt2s2pAP2h9WQERLVwB7egK3VYCITBnMSYw5HaB98YGrkfMW4+of/9t7sJE9Ghd0E2fxYxFP8aYTGMF4xxKDxSfrHWczI3hiXCxScQPDppIQDWK2KrJ6jc3exzh0nJeXS2qZ9zwSjn+yjkUp5XGeGgj8CyZY/6uGC3UqBUa6+KxMdssPc7oPC1/sMribgcBNelrRDIv2p1X53ofL7afYEzuCgHVy8RO2hiFF6EPRpw7/3BnlmII4I/3zWoIbWulk50LEvlv8C53nZk+0JGxvlhUJyVLX16KKdL/GoUsmwU6h0KYFaermLdaqZi0i2znQeMw2Ye8XSvJL8jQs33IkFBCiiwLFvvuCKzQiVJnOdsfKJ3u9BF1aVglDod9zYqT2QvZxpxo6RIRjuXH+g==",
+                "body": "{\"Service\":\"Amazon S3\",\"Event\":\"s3:TestEvent\",\"Time\":\"2018-10-31T14:08:15.242Z\",\"Bucket\":\"mp3.rightcall\",\"RequestId\":\"BB78EBDA2952667F\",\"HostId\":\"+8NUd+txRSmPQlapdO69n47dxJi5DQqqZ+kFV//ooNOkj0iBnFbONOSN4/XO6TfJf54exLEJtRo=\"}",
+                "attributes": {
+                    "ApproximateReceiveCount": "1",
+                    "SentTimestamp": "1540994895388",
+                    "SenderId": "AIDAJVEO32BJMF27H2JKW",
+                    "ApproximateFirstReceiveTimestamp": "1540994895398"
+                    },
+                "messageAttributes": {},
+                "md5OfBody": "90bca7ebfeff23e8c6e9458ef7a80907",
+                "eventSource": "aws:sqs",
+                "eventSourceARN": "arn:aws:sqs:eu-west-1:868234285752:RightcallTranscriptionJobs",
+                "awsRegion": "eu-west-1"
+                }
+            ]
+        }
+    response = lambda_handler(unhandled, None)
     print(response)

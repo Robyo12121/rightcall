@@ -188,7 +188,7 @@ def search_by_ref(s, ref):
     return s
 
 if __name__ == '__main__':
-    download_mp3_by_ref(s, username, passwd, 'cdbafcTOd00504', r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\mp3s\Promo\cdbafcTOd00504.mp3')
+    download_mp3_by_ref(s, username, passwd, 'd839ccTOd00974', r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\data\mp3s\Promo\d839ccTOd00974.mp3')
 ##    download_mp3_by_ref(s, username, passwd, 'b76993TOd10547')
 ##    download_mp3_by_csv(s, username, passwd, 'csvs/toget.csv', download_dir='mp3s')
 # Example. Download mp3 file from www.prosodie.com by '3905beTOd10339'

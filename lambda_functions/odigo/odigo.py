@@ -68,7 +68,7 @@ def setup():
     return s
 
 
-def download_mp3(s, path=None, ref=None):
+def download_mp3(s, path=None, ref=None, xpath=None):
     """Download mp3 file from www.prosodie.com page and return session.
     Input:
         s -- Requestium session (required |
@@ -80,8 +80,13 @@ def download_mp3(s, path=None, ref=None):
         s -- Requestium session (type: requestium.requestium.Session).
 
     """
-
-    s.driver.ensure_element_by_class_name('x-action-col-icon').click()
+    if ref is not None and xpath is None:
+        s.driver.ensure_element_by_class_name('x-action-col-icon').click()
+    elif xpath is not None and ref is None:
+        s.driver.ensure_element_by_xpath(xpath).click()
+    else:
+        print("Cannot use both reference number and xpath")
+        return
     s.driver.switch_to.frame('result_frame')
     time.sleep(1)
     # Get URL of mp3 file
@@ -104,6 +109,7 @@ def download_mp3(s, path=None, ref=None):
         return 1
     # Requests --> Selenium
     s.transfer_session_cookies_to_driver()
+    s.driver.switch_to.default_content()
     return s
 
 
@@ -230,7 +236,10 @@ def login(s, username, passwd):
 
 def search_by_range(s, start_date=None, start_time=None, end_date=None,
                     end_time=None):
-    """Search records on www.prosodie.com by date range and return session.
+    """ Doesn't work correctly. Date seems to work but time not so much. 
+        
+
+    Search records on www.prosodie.com by date range and return session.
     Input:
         s -- Requestium session (required |
              type: requestium.requestium.Session);
@@ -257,7 +266,7 @@ def search_by_range(s, start_date=None, start_time=None, end_date=None,
         s.driver.ensure_element_by_name('dateFin').send_keys(end_date)
     if end_time:
         s.driver.ensure_element_by_name('heureFin').send_keys(end_time)
-    s.driver.ensure_element_by_id('button-1009').click()
+    s.driver.ensure_element_by_id('button-1009').ensure_click()
     return s
 
 
@@ -293,10 +302,73 @@ def search_by_ref(s, ref):
     s.driver.ensure_element_by_id('button-1009').click()
     return s
 
+def messages_per_page(s):
+    pass
+
+def count_recordings(s):
+    """Doesn't Work"""
+    refs = []
+    items = s.driver.find_elements_by_css_selector('#gridview-1064-body')
+##    items = s.driver.ensure_elements_by_xpath('//*[@id="gridview-1064-body"]')
+    for item in items:
+        ref_num = s.driver.ensure_element_by_css_selector('#ext-gen1440 > div:nth-child(1)')
+        refs.append(ref_num)
+    # refs = s.driver.find_elements_by_xpath('//*[@id="gridview-1064-record-6203746"]')
+    return refs
+
+def get_num_results(s):
+    """Doesn't work. Only returns 'RESULTS : ' and no number"""
+    text2 = s.driver.ensure_element_by_css_selector('#resultLabelId').text
+    return text, text2
+
+def get_text(s, element_xpath):
+    """Given the xpath returns the web element text"""
+    text = s.driver.ensure_element_by_xpath(element_xpath)
+    return text.text
+
+def xpath_generator(common, ending, loop_element, count=10):
+    """Given common xpath and ending xpath:
+    return a generator to loop through that xpath element
+    """
+    for i in range(count):
+        yield (common + loop_element + '[' + str(i+1)+ ']' + ending)
+
 
 if __name__ == '__main__':
     s = setup()
-    element = download_all_csv(s, username, passwd)
+    d = datetime.datetime.now()
+    s = login(s, username, passwd)
+    search_range = set_range(d)
+    print(search_range)
+    s = search_by_range(s, search_range[0],
+                        search_range[1],
+                        search_range[2],
+                        search_range[3])
+    time.sleep(0.5)
+    s = search_by_language(s, language="_EN")
+    time.sleep(0.5)
+     
+    common = '/html/body/div[2]/div[3]/div[2]/div[5]/div/div/span/div/div/div[2]/div/div/div[1]/div[2]/div/table/tbody/'
+    time_path = '/td[4]/div'
+    mp3_path = '/td[2]/div/img'
+    time_gen = xpath_generator(common, time_path, 'tr')
+    mp3_gen = xpath_generator(common, mp3_path, 'tr')
+    while True:
+        try:
+            rec_time = get_text(s, next(time_gen))
+            print(rec_time)
+            s = download_mp3(s, xpath=next(mp3_gen))
+            
+        except Exception as e:
+            print(f"Exception occured: {e}")
+            raise e
+            
+            
+##    text, text2 = get_num_results(s)
+##    refs = count_recordings(s)
+##    download_mp3(s)
+    s.driver.close()
+    # element = download_all_csv(s, username, passwd)
     # print(element)
     # print(type(element))
     # download_mp3_by_csv(s, username, passwd, )
@@ -305,6 +377,11 @@ if __name__ == '__main__':
     # download_mp3_by_ref(s, username, passwd, 'b76993TOd10547')
     # download_mp3_by_csv(s, username, passwd,
     #                     'csvs/toget.csv', download_dir='mp3s')
+
+
+
+
+    
     # Example. Download mp3 file from www.prosodie.com by '3905beTOd10339'
     # ref number
     # download_mp3_by_ref(s, username, passwd, '3905beTOd10339')
