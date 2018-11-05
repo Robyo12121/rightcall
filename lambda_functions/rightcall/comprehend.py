@@ -139,9 +139,9 @@ def get_sentiment(text, language_code='en'):
 
 def get_entities(text, language_code='en'):
     comprehend = boto3.client('comprehend')
-    logger.info("Getting entites...")
+    print("Getting entites...")
     if getsizeof(text) >= COMPREHEND_SIZE_LIMIT:
-        logger.info("Too big! Proceeding with chunkification")
+        print("Too big! Proceeding with chunkification")
         combined = []
         chunks, weights = chunkify(text, COMPREHEND_SIZE_LIMIT)
         try:
@@ -153,25 +153,25 @@ def get_entities(text, language_code='en'):
                 combined = combined + ent_list['Entities']
 
         except Exception as e:
-            logger.error(str(e))
+            print(str(e))
             raise e
         else:
-            return combined
+            return list(create_set(combined))
     else:
         try:
             r = comprehend.detect_entities(Text=text, LanguageCode='en')
             entities = r['Entities']
         except Exception as e:
-            logger.error(str(e))
+            print(str(e))
             raise e
-        return create_set(entities)
+        return list(create_set(entities))
 
 
 def get_key_phrases(text, language_code='en'):
     comprehend = boto3.client('comprehend')
-    logger.info("Getting key phrases...")
+    print("Getting key phrases...")
     if getsizeof(text) >= COMPREHEND_SIZE_LIMIT:
-        logger.info("Too big! Proceeding with chunkification")
+        print("Too big! Proceeding with chunkification")
         chunks, weights = chunkify(text, COMPREHEND_SIZE_LIMIT)
         try:
             r = comprehend.batch_detect_key_phrases(
@@ -182,18 +182,18 @@ def get_key_phrases(text, language_code='en'):
                 kps = kps + kp_list['KeyPhrases']
 
         except Exception as e:
-            logger.error(str(e))
+            print(str(e))
             raise e
         else:
-            return create_set(kps)
+            list(return create_set(kps))
     else:
         try:
             r = comprehend.detect_key_phrases(Text=text, LanguageCode='en')
             kps = r['KeyPhrases']
         except Exception as e:
-            logger.error(str(e))
+            print(str(e))
             raise e
-        return create_set(kps)
+        return list(create_set(kps))
 
 # Example. Get sentiment of text below:
 # "I ordered a small and expected it to fit just right but it was a little bit

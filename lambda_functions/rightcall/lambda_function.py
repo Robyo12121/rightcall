@@ -54,9 +54,6 @@ def Transcribe(event):
     key = body['s3']['object']['key']
     logger.info("Bucket Event: {}".format(str(bucket)))
     if bucket == MP3S:
-        # key = unquote_plus(
-        #     event['Records'][0]['s3']['object']['key'],
-        #     encoding='utf-8')
         logger.info("Bucket: {}, Key: {}".format(
             str(bucket),
             str(key)))
@@ -132,7 +129,8 @@ def Comprehend(event):
     try:
         response = s3.put_object(Body=json.dumps(r, indent=2),
                                  Bucket=COMPREHEND,
-                                 Key=event['detail']['TranscriptionJobName'])
+                                 Key=event['detail']['TranscriptionJobName'] 
+                                 + '.json')
     except Exception as e:
         logger.error(str(e))
         raise e
