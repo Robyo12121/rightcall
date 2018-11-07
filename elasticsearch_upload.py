@@ -1,22 +1,37 @@
 from elasticsearch import Elasticsearch
 import boto3
 import json
-
+from os import path
 s3 = boto3.client('s3')
+
+directory = path.dirname(__file__)
 
 COMPREHEND = 'comprehend.rightcall'
 es = Elasticsearch([{'host': 'localhost',
                      'port': 9200}])
 
-SETTINGS = '/data/elasticsearch/settings.json'
-INDEX = 'rightcall'
+with open(directory + '/data/elasticsearch/mapping.json', 'r') as file:
+    MAPPING = json.load(file)
 
-def create_index(index_name, settings):
-    es.indices.create(index=index_name, body=SETTINGS, ignore=400)
+INDEX_NAME = 'rightcall'
+TYPE_NAME = '_doc'
+
+
+def create_index(index_name, request_body):
+    if es.indices.exists(INDEX_NAME):
+        print(f"Deleting {INDEX_NAME} index ...")
+        res = es.indices.delete(index=INDEX_NAME)
+        print(f"Response: {res}")
+    print(f"Creating {INDEX_NAME} index...")
+    res = es.indices.create(index=index_name, body=request_body, ignore=400)
+    print(f"Response: {res}")
 
 def rename(dictionary):
-    fields = {'ref': 'reference_number',
-              'promo': 'promotion'}
+    fields = {'ref': 'referenceNumber',
+              'reference_number': 'referenceNumber',
+              'promo': 'promotion',
+              'key_phrases': 'keyPhrases',
+              'keyphrases': 'keyPhrases'}
     
     for field in dictionary.keys():
         if field in fields.keys():
@@ -33,8 +48,10 @@ def load_recording(es, index, bucket, doctype='_doc', ):
         data = rename(data)
         es.index(index=index, doc_type=doctype, id=ob_id.split('--')[0], body=data) 
 
-    
+def search(es, index, num_results, 
+
 if __name__ == '__main__':
-##    create_index(INDEX, SETTINGS)  
-    load_recording(es, INDEX, COMPREHEND)
+    if not es.indices.exists(INDEX_NAME):
+        create_index(INDEX_NAME, MAPPING)
+    load_recording(es, INDEX_NAME, COMPREHEND)
 
