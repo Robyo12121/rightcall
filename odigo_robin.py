@@ -18,7 +18,7 @@ load_dotenv()
 username = os.environ.get('PROSODIE_USERNAME')
 passwd = os.environ.get('PROSODIE_PASSWORD')
 print(sys.version)
-
+driver = r'C:\Users\RSTAUNTO\Desktop\chromedriver.exe'
 
 def change_date_format(date):
     try:
@@ -63,7 +63,6 @@ def set_range(now):
 
 
 def setup():
-    driver = r'C:\Users\RSTAUNTO\Desktop\chromedriver.exe'
     s = Session(webdriver_path=driver,
                 browser='chrome',
                 default_timeout=15,
@@ -345,18 +344,22 @@ def loop_through_table(s):
 
 if __name__ == '__main__':
     s = setup()
-    d = datetime.datetime.now()
-    s = login(s, username, passwd)
-    search_range = set_range(d)
-    print(search_range)
-    s = search_by_range(s, search_range[0],
-                        search_range[1],
-                        search_range[2],
-                        search_range[3])
-    time.sleep(0.5)
-    s = search_by_language(s, language="_EN")
-    time.sleep(0.5)
-    table = loop_through_table(s)
+
+    download_mp3_by_csv(s, username, passwd, 'to_download.csv', 'data/mp3s/')
+
+    
+##    d = datetime.datetime.now()
+##    s = login(s, username, passwd)
+##    search_range = set_range(d)
+##    print(search_range)
+##    s = search_by_range(s, search_range[0],
+##                        search_range[1],
+##                        search_range[2],
+##                        search_range[3])
+##    time.sleep(0.5)
+##    s = search_by_language(s, language="_EN")
+##    time.sleep(0.5)
+##    table = loop_through_table(s)
 ##    common =       '/html/body/div[2]/div[3]/div[2]/div[5]/div/div/span/div/div/div[2]/div/div/div[1]/div[2]/div/table/tbody/'
 ##    body = '//*[@id="gridview-1064-body"]'
 ##    ref_num_path = 'tr[1]/td[3]/div'

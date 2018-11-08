@@ -61,6 +61,20 @@ def upload_file(file_abs_path, bucket_name, key_name=None):
     else:
         return False
 
+def get_bucket_item(partial_key, bucket_name):
+    """Retreive json file from s3 given key or partial key"""
+    s3 = boto3.client('s3')
+    keys = s3.list_objects_v2(Bucket=bucket_name)
+    for key in keys:
+        if reference_number in key:
+            match = key
+            break
+        else:
+            return False
+    resp = json.loads(s3.get_object(Bucket=bucket_name,
+                                    Key=match)['Body'].read().decode('utf-8'))
+    return resp
+
 # Example. Upload '/tmp/example.mp3' file to Amazon S3 'examplebucket' bucket as
 # 'example.mp3' file
 #upload_file('/tmp/example.mp3', 'examplebucket')
