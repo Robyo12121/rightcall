@@ -13,7 +13,7 @@ import json
 import logging
 
 
-LOGLEVEL = 'INFO'
+LOGLEVEL = 'DEBUG'
 RC_DIR = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/'
 CSV_DIR = RC_DIR + 'data/csvs/'
 MP3_DIR = RC_DIR + '/data/mp3s/'
@@ -69,30 +69,58 @@ def RightcallLocal():
     
     # For each record found in CSV file:
     for i, call_record in enumerate(json_data):
+        logger.info('---------------------------------------')
         logger.info(f"Working on {i} : {call_record['Name']}")
-        
-        # Upload it to DynamoDB 
-        r = dynamodb_tools.put_call(call_record, table)
-        if r['ResponseMetadata']['HTTPStatusCode'] == 200:
-            logger.debug("Successful response from 'put_item' to database")
+
+        # Check if exists in elasticsearch already
+        if elasticsearch_tools.exists(es, INDEX_NAME, call_record['Name']):
+            logger.info(f"{call_record['Name']} already in {INDEX_NAME} index")
+            logger.info(f"Deleting {call_record['Name']} from csv")
+            json_data.remove(call_record)
+            continue
         else:
-            logger.warning("Failed to put item in database")
-            
+            logger.info(f"{call_record['Name']} not in {INDEX_NAME} index")
+        
+        # Check if it exsits in db already
+        exists = dynamodb_tools.check_exists(call_record['Name'], table)
+        if not exists:
+            logger.info(f"{call_record['Name']} not in {table} database. Adding...")
+            # Upload it to DynamoDB 
+            r = dynamodb_tools.put_call(call_record, table)
+            if r['ResponseMetadata']['HTTPStatusCode'] == 200:
+                logger.debug("Successful response from 'put_item' to database")
+            else:
+                logger.warning("Failed to put item in database")
+        else:
+            logger.info(f"{call_record['Name']} already in {table} database")
+            logger.info("Skipping database add...")
+
+        logger.info(f"Checking {BUCKET} bucket for {call_record['Name']}")
         s3_item = s3py.get_bucket_item(call_record['Name'], BUCKET)
         if not s3_item:
             logger.warning(f"{call_record['Name']} not found in {BUCKET}")
-            logger.info("Skipping to next record")
+            logger.info("Skipping...")
             continue
+        else:
+            logger.info(f"{call_record['Name']} in {BUCKET}")
+
+        # Clean data before going to ES
+        logger.info(f"cleaning data")
         s3_item = elasticsearch_tools.rename(s3_item)
+        
         # Get item from dynamodb
+        logger.info(f"Retreiving {call_record['Name']} from {table}")
         db_item = dynamodb_tools.get_db_item(call_record['Name'], table)
+        
         # Upload to elasticsearch
+        logger.info(f"Combining data for {call_record['Name']} and adding to {INDEX_NAME} index")
         result = elasticsearch_tools.load_call_record(
                 db_item,
                 s3_item,
                 es,
                 INDEX_NAME)
         if result:
+            logger.info(f"{call_record['Name']} successfully added. Deleting from csv")
             json_data.remove(call_record)
         else:
             logger.error("Couldn't upload to elasticsearch")
@@ -101,19 +129,7 @@ def RightcallLocal():
     df = pd.DataFrame.from_dict(json_data)
     logger.info(f"Writing remaining records back to csv")
     df.to_csv(RC_DIR + '/data/csvs/'+ 'to_download.csv', sep=';', index=False)
-    
-    
 
-            # output a file with reference numbers of calls to get with
-            # odigo and upload to s3. 
-            # download mp3 from prosodie
-##            s, username, passwd, driver = odigo_robin.setup()
-##            odigo.download_mp3_by_ref(s,
-##                                      username,
-##                                      passwd,
-##                                      call_record['Name'],
-##                                      path=MP3_DIR)
-            # upload file to s3 bucket
             
 
 

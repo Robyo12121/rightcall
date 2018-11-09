@@ -83,7 +83,8 @@ def check_exists(reference_number, table):
 
 if __name__ == '__main__':
     item = get_db_item('e22b20TOd10287', table)
-    response = table.put_item(Item=item)
+    print(item)
+##    response = table.put_item(Item=item)
 ##    for file in os.listdir(datapath):
 ##        check_exists(file.split('--')[0], table)
 

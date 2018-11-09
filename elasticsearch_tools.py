@@ -8,38 +8,39 @@ import logging
 module_logger = logging.getLogger('Rightcall.elasticsearch_tools')
 
 
-def setup():
-    with open(directory + '/data/elasticsearch/mapping.json', 'r') as file:
-        MAPPING = json.load(file)
-    s3 = boto3.client('s3')
 
-    directory = path.dirname(__file__)
+directory = r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin'
+with open(directory + '/data/elasticsearch/mapping.json', 'r') as file:
+    MAPPING = json.load(file)
+s3 = boto3.client('s3')
 
-    COMPREHEND = 'comprehend.rightcall'
-    REGION = 'eu-central-1'
+directory = path.dirname(__file__)
 
-    DB_ENDPOINT = 'http://localhost:8000'
-    TABLE_NAME = 'Rightcall'
+COMPREHEND = 'comprehend.rightcall'
+REGION = 'eu-central-1'
 
-    es = Elasticsearch([{'host': 'localhost',
-                         'port': 9200}])
-    INDEX_NAME = 'rightcall'
-    TYPE_NAME = '_doc'
+DB_ENDPOINT = 'http://localhost:8000'
+TABLE_NAME = 'Rightcall'
 
-    dynamodb = boto3.resource('dynamodb',
-                              region_name=REGION,
-                              endpoint_url = DB_ENDPOINT)
-    table = dynamodb.Table(TABLE_NAME)
+es = Elasticsearch([{'host': 'localhost',
+                     'port': 9200}])
+INDEX_NAME = 'rightcall'
+TYPE_NAME = '_doc'
+
+dynamodb = boto3.resource('dynamodb',
+                          region_name=REGION,
+                          endpoint_url = DB_ENDPOINT)
+table = dynamodb.Table(TABLE_NAME)
 
 
 def create_index(index_name, request_body):
     if es.indices.exists(INDEX_NAME):
-        print(f"Deleting {INDEX_NAME} index ...")
+        module_logger.info(f"Deleting {INDEX_NAME} index ...")
         res = es.indices.delete(index=INDEX_NAME)
-        print(f"Response: {res}")
-    print(f"Creating {INDEX_NAME} index...")
+        module_logger.info(f"Response: {res}")
+    module_logger.info(f"Creating {INDEX_NAME} index...")
     res = es.indices.create(index=index_name, body=request_body, ignore=400)
-    print(f"Response: {res}")
+    module_logger.info(f"Response: {res}")
 
 
 def rename(dictionary):
@@ -50,6 +51,7 @@ def rename(dictionary):
               'key_phrases': 'keyPhrases',
               'keyphrases': 'keyPhrases'}
     if type(dictionary) is not dict:
+        module_logger.error("input is not dictionary. ERROR")
         raise TypeError
     
     for field in dictionary.keys():
@@ -88,17 +90,39 @@ def load_bucket_recordings(es, index, bucket, doctype='_doc'):
         db_item = dynamodb_tools.get_db_item(ob_id, table)
         if db_item is not None:
             load_call_record(db_item, s3_item, es, index)
-##            data = {**db_item, **s3_item}
-##            es.index(index=index, doc_type=doctype, id=ob_id.split('--')[0], body=data)
         else:
             print("That item doesn't exist in the database")
             print("Exiting")
             return False
 
 
+def exists(es, index, referenceNumber):
+    result = es.exists(index, doc_type='_doc',id=referenceNumber)
+    return result
+
+def reindex(es, old_index, new_index):
+    payload = {"source": {
+                "index": old_index
+              },
+            "dest": {
+                "index": new_index}}
+    result = es.reindex(body=payload)
+    return result
+
+def delete_index(es, index_name):
+    result = es.delete(index_name)
+    return result
+
+
 if __name__ == '__main__':
-    setup()
-    if not es.indices.exists(INDEX_NAME):
-        create_index(INDEX_NAME, MAPPING)
-    load_recording(es, INDEX_NAME, COMPREHEND)
+##    print(exists(es, INDEX_NAME, 'c4707fTOd00126'))
+    oldINDEX_NAME = 'rightcall_plusplus'
+    newINDEX_NAME = 'rightcall'
+    if es.indices.exists(oldINDEX_NAME):
+        res = delete_index(es, oldINDEX_NAME)
+    print(res)
+##    result = reindex(es, oldINDEX_NAME, newINDEX_NAME)
+##    print(result)
+            
+##    load_recording(es, INDEX_NAME, COMPREHEND)
 

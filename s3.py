@@ -65,7 +65,7 @@ def upload_file(file_abs_path, bucket_name, key_name=None):
 
 def get_bucket_item(partial_key, bucket_name):
     """Retreive json file from s3 given key or partial key"""
-    module_logger.debug(f"get_bucket_item called with {partial_key}, {bucket_name}")
+    module_logger.debug(f"get_bucket_item called with Key: {partial_key} on Bucket: {bucket_name}")
     s3 = boto3.client('s3')
     module_logger.debug(f"Getting list of items from {bucket_name}")
     keys = s3.list_objects_v2(Bucket=bucket_name)
