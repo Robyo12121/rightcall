@@ -10,11 +10,14 @@ import s3 as s3py
 import pandas as pd
 import boto3
 import json
+import logging
 
+
+LOGLEVEL = 'INFO'
 RC_DIR = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/'
 CSV_DIR = RC_DIR + 'data/csvs/'
 MP3_DIR = RC_DIR + '/data/mp3s/'
-CSV = CSV_DIR + '20181107-161633.csv'
+CSV = CSV_DIR + 'to_download.csv'
 REGION = 'eu-central-1'
 
 DB_ENDPOINT = 'http://localhost:8000'
@@ -33,6 +36,24 @@ es = elasticsearch_tools.Elasticsearch([{'host': 'localhost',
                      'port': 9200}])
 table = dynamodb.Table(TABLE_NAME)
 
+
+# Logging
+levels=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+if LOGLEVEL not in levels:
+    raise ValueError(f"Invalid log level choice {LOGLEVEL}")
+logger = logging.getLogger('Rightcall')
+logger.setLevel(LOGLEVEL)
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(LOGLEVEL)
+# create formatter
+formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+# add formatter to ch
+ch.setFormatter(formatter)
+# add ch to logger
+logger.addHandler(ch)
+
+
 def parse_csv(path_to_file):
     file = pd.read_csv(path_to_file, sep=';')
     json_file = file.to_json(orient='records')
@@ -41,26 +62,45 @@ def parse_csv(path_to_file):
 
 def RightcallLocal():
     json_data = parse_csv(CSV)
-    print(f"Num records to process: {len(json_data)}")
+    logger.info(f"Num records to process: {len(json_data)}")
+    logger.info(f"Getting objects from {BUCKET}")
     keys = s3.list_objects_v2(Bucket=BUCKET)
-    for call_record in json_data:
-        dynamodb_tools.put_call(call_record, table)
-        if call_record['Name'] in keys:
-            # Download json from s3
-            s3_item = rename(s3py.get_bucket_item(call_record['Name']))
-            # Get item from dynamodb
-            db_item = dynamodb_tools.get_db_item(call_record['Name'], table)
-            # Upload to elasticsearch
-            result = elasticsearch_tools.load_call_record(db_item, s3_item, es, INDEX_NAME)
-            if result:
-                del json_data[call_record]
-            else:
-                print("Couldn't upload to elasticsearch")
+    logger.debug(f"Received {len(keys['Contents'])} objects from {BUCKET}")
+    
+    # For each record found in CSV file:
+    for i, call_record in enumerate(json_data):
+        logger.info(f"Working on {i} : {call_record['Name']}")
+        
+        # Upload it to DynamoDB 
+        r = dynamodb_tools.put_call(call_record, table)
+        if r['ResponseMetadata']['HTTPStatusCode'] == 200:
+            logger.debug("Successful response from 'put_item' to database")
         else:
-            print(f"No record with name {call_record['Name']}")
-    print(f"Num records unsuccessfully processed: {len(json_data)}")
+            logger.warning("Failed to put item in database")
+            
+        s3_item = s3py.get_bucket_item(call_record['Name'], BUCKET)
+        if not s3_item:
+            logger.warning(f"{call_record['Name']} not found in {BUCKET}")
+            logger.info("Skipping to next record")
+            continue
+        s3_item = elasticsearch_tools.rename(s3_item)
+        # Get item from dynamodb
+        db_item = dynamodb_tools.get_db_item(call_record['Name'], table)
+        # Upload to elasticsearch
+        result = elasticsearch_tools.load_call_record(
+                db_item,
+                s3_item,
+                es,
+                INDEX_NAME)
+        if result:
+            json_data.remove(call_record)
+        else:
+            logger.error("Couldn't upload to elasticsearch")
+
+    logger.info(f"Num records unsuccessfully processed: {len(json_data)}")
     df = pd.DataFrame.from_dict(json_data)
-    df.to_csv('to_download.csv', sep=';', index=False)
+    logger.info(f"Writing remaining records back to csv")
+    df.to_csv(RC_DIR + '/data/csvs/'+ 'to_download.csv', sep=';', index=False)
     
     
 
@@ -78,19 +118,4 @@ def RightcallLocal():
 
 
 if __name__ == '__main__':
-    to_download = RightcallLocal()
-
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__ == '__main__':
-    pass
+    data = RightcallLocal()

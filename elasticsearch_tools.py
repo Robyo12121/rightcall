@@ -3,6 +3,9 @@ import boto3
 import json
 from os import path
 import dynamodb_tools
+import logging
+
+module_logger = logging.getLogger('Rightcall.elasticsearch_tools')
 
 
 def setup():
@@ -40,23 +43,30 @@ def create_index(index_name, request_body):
 
 
 def rename(dictionary):
+    module_logger.debug(f"rename called with {dictionary.keys()}")
     fields = {'ref': 'referenceNumber',
               'reference_number': 'referenceNumber',
               'promo': 'promotion',
               'key_phrases': 'keyPhrases',
               'keyphrases': 'keyPhrases'}
+    if type(dictionary) is not dict:
+        raise TypeError
     
     for field in dictionary.keys():
         if field in fields.keys():
+            module_logger.debug(f"Renaming {field} to {fields[field]}")
             dictionary[fields[field]]= dictionary[field]
+            module_logger.debug(f"Deleting {field}")
             del dictionary[field]
     return dictionary
 
-def load_call_record(db_record, s3_item, es, index, doctype='_doc'):
+def load_call_record(db_item, s3_item, es, index, doctype='_doc'):
+    module_logger.debug(f"""load_call_record called with DB record: {db_item['referenceNumber']}, S3 Object:{s3_item['referenceNumber']} on {index}""")
     data = {**db_item, **s3_item}
     try:
-        es.index(index=index, doc_type=doctype, id=ob_id.split('--')[0], body=data)
+        es.index(index=index, doc_type=doctype, id=data['referenceNumber'], body=data)
     except Exception as e:
+        module_logger.error(e)
         raise e
     else:
         return True

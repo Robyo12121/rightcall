@@ -4,8 +4,10 @@
 from os import walk
 from os.path import basename, exists, isfile, join, dirname
 import sys
-
+import logging
 import boto3
+import json
+module_logger = logging.getLogger('Rightcall.s3')
 
 bucket_name = 'mp3.rightcall'
 
@@ -63,16 +65,25 @@ def upload_file(file_abs_path, bucket_name, key_name=None):
 
 def get_bucket_item(partial_key, bucket_name):
     """Retreive json file from s3 given key or partial key"""
+    module_logger.debug(f"get_bucket_item called with {partial_key}, {bucket_name}")
     s3 = boto3.client('s3')
+    module_logger.debug(f"Getting list of items from {bucket_name}")
     keys = s3.list_objects_v2(Bucket=bucket_name)
-    for key in keys:
-        if reference_number in key:
-            match = key
+    module_logger.debug(f"Received {type(keys)} from {bucket_name}")
+    module_logger.debug(f"Looking for match of {partial_key} in {type(keys)}")
+    for key in keys['Contents']:
+        if partial_key in key['Key']:
+            module_logger.debug(f"{partial_key} match found: {key['Key']}")
+            match = key['Key']
+            module_logger.debug("Breaking for loop")
             break
-        else:
-            return False
+    else:
+        module_logger.debug("No match found, returning False")
+        return False
+    module_logger.debug(f"Getting {match} from {bucket_name}")
     resp = json.loads(s3.get_object(Bucket=bucket_name,
                                     Key=match)['Body'].read().decode('utf-8'))
+    module_logger.debug(f"Received {type(resp)} item, returning it")
     return resp
 
 # Example. Upload '/tmp/example.mp3' file to Amazon S3 'examplebucket' bucket as

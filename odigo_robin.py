@@ -10,8 +10,10 @@ from bs4 import BeautifulSoup
 from requestium import Session
 from selenium.webdriver.common.action_chains import ActionChains
 from dotenv import load_dotenv
-
+import logging
 from lxml import html
+
+module_logger = logging.getLogger('Rightcall.odigo_robin')
 
 
 load_dotenv()
@@ -345,7 +347,7 @@ def loop_through_table(s):
 if __name__ == '__main__':
     s = setup()
 
-    download_mp3_by_csv(s, username, passwd, 'to_download.csv', 'data/mp3s/')
+    download_mp3_by_csv(s, username, passwd, 'data/csvs/to_download.csv', 'data/mp3s/')
 
     
 ##    d = datetime.datetime.now()
@@ -381,7 +383,7 @@ if __name__ == '__main__':
 ##    text, text2 = get_num_results(s)
 ##    refs = count_recordings(s)
 ##    download_mp3(s)
-    s.driver.close()
+##    s.driver.close()
     # element = download_all_csv(s, username, passwd)
     # print(element)
     # print(type(element))

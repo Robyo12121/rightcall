@@ -2,8 +2,10 @@ import pandas as pd
 from os import path
 import boto3
 import json
-
+import logging
 import os.path  
+
+module_logger = logging.getLogger('Rightcall.dynamodb_tools')
 
 
 ##    datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/csvs/'
@@ -33,6 +35,7 @@ def write_csv_to_db(csv_filepath, table):
 
 
 def put_call(call, table):
+    module_logger.debug(f"put_call called with {call['Name']} on {table}")
     try:
         response = table.put_item(Item={'referenceNumber': call['Name'],
                        'date': call['Date'],
@@ -40,23 +43,26 @@ def put_call(call, table):
                        'skill': call['Skill']})
     except Exception as e:
         raise e
+    else:
+        return response
     
 
 def get_db_item(reference_number, table):
+    module_logger.debug(f"get_db_item called with {reference_number} on {table}")
     try:
         response = table.get_item(Key={
             'referenceNumber': reference_number,
             })
 
     except ClientError as e:
-            print(e.response['Error']['Message'])
+            module_logger.error(f"Error: {e.response['Error']['Message']}")
     else:
         try:
             item = response['Item']
-            print("Get Item succeeded!")
+            module_logger.debug(f"Successful. Returning {type(item)}")
             return item
         except KeyError as k_err:
-            print("Item not in db")
+            module_logger.error("Item not in db")
 
 def check_exists(reference_number, table):
     try:
@@ -76,8 +82,10 @@ def check_exists(reference_number, table):
 
 
 if __name__ == '__main__':
-    for file in os.listdir(datapath):
-        check_exists(file.split('--')[0], table)
+    item = get_db_item('e22b20TOd10287', table)
+    response = table.put_item(Item=item)
+##    for file in os.listdir(datapath):
+##        check_exists(file.split('--')[0], table)
 
     
 ##    response = write_csv_to_db(path_to_file, table)
