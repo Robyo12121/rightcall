@@ -127,3 +127,7 @@ docs/*
 
 # data/ folder
 data/*
+
+# Picture
+*.PNG
+*.JPEG

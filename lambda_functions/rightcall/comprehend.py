@@ -77,6 +77,44 @@ def best_sentiment(sent_dict):
             sentiment = k
     return sentiment
 
+def remove_numbers(kps_list):
+    print(kps_list)
+    nums = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'
+            'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen'
+            'eighteen', 'nineteen', 'twenty', 'thirty', 'fourty', 'fifty', 'sixty',
+            'seventy', 'eighty', 'ninty', 'hundred']
+    useless = ['mhm', 'yeah', 'um', 'ah', 'a', 'the', 'o.k.']
+    processed = 0
+    removed = 0
+    print()
+    print(f"Length of input string: {len(kps_list)}")
+    for item in kps_list[:]:
+        processed += 1
+        logger.info(f"Working on {item}")
+        if item.lower() in useless:
+            logger.info(f"Removing '{item}'")
+            try:
+                kps_list.remove(item)
+                continue
+            except ValueError:
+                logger.warning(f"{item} already removed")
+                
+        for part in item.split(' '):
+            logger.info(f"Working on part '{part}'")
+            if part.isdigit() or part.lower() in nums:
+                logger.info(f"Trying to remove '{item}' because '{part}' is a digit or number")
+                try:
+                    kps_list.remove(item)
+                    removed += 1
+                    logger.info("Success")
+                    break
+                except ValueError:
+                    logger.warning(f"{item} may already have been removed")
+                
+    print(f"Items processed: {processed}")
+    print(f"Items removed: {removed}")
+    return kps_list 
+                
 
 def clean(dictionary):
     """
@@ -181,8 +219,7 @@ def get_entities(text, language_code='en'):
         except Exception as e:
             logger.error(str(e))
             raise e
-        
-    return clean(create_set(entities))
+    return list(set(x['Text'] for x in entities if x['Type'] in ['PERSON', 'LOCATION', 'DATE']))
 
 
 def get_key_phrases(text, language_code='en'):
@@ -210,7 +247,7 @@ def get_key_phrases(text, language_code='en'):
             logger.error(str(e))
             raise e
         
-    return clean(create_set(kps))
+    return remove_numbers(list(set(x['Text'] for x in kps)))
 
 # Example. Get sentiment of text below:
 # "I ordered a small and expected it to fit just right but it was a little bit
@@ -230,14 +267,11 @@ if __name__ == '__main__':
  pictured but fairly close. Would be ten times better if it was lined with
  cotton or wool on the inside."""
     call_text = """Hello, heavy several services. My name is barbara can providing your full name or previous-ticket-number if you have one. Yeah. Ah, christopher pink-button hm. Okay, just a moment, please. So yeah. Fifteen. Your last name. Okay. Goodness, g o o d a good man. Oh, yeah. Oh! Hm. Yeah, oh, mhm, yeah, yeah, yeah, okay, yeah, you can send me your manager's name, Outlook say that again. O.K., please tell-me your manager's name. Yeah, maria southerly. Okay, and, uh, i'm going to send me a phone number, just in case you get. You can just kind of, yeah. Ah, two, one, five, 5, 1, 8 three, nine, seven one, seven one are you going to located in ah northwest, too ? Yes, okay, how may i assist ? Um, i need to have my, i guess, my password. Except for oracle. I sent iExpense, okay, and they use your name is the same as the the main one or a different. I think it's the same at the door, may see equipment here. One. Okay, i'm going to search for that one, to take a few moments, okay ? Mhm, yeah, yeah. Yeah. Oh, yeah. Yeah. Yeah. Oh, yeah. Oh! So i'm gonna search for seeing goodman a one. Point. Yeah, yeah, yeah, mhm. Oh, yeah. Mhm. Yeah, yeah, yeah. Oh, oh, yeah! Oh, yeah, yeah. Okay, mhm. Okay. Yeah, yeah. Yeah, yeah, mhm, mhm. Okay, so i see a change your password. I will give you a temporary one. It's seven thirty one, two, three, four, five. Okay, right, yeah, yeah, yeah, mhm. Oh, yeah. Okay. Okay, okay. They, uh, yeah, yeah, yeah, mhm, yeah, yeah. Mhm. Yeah. Yeah. Yeah, yeah, yeah. Oh, okay. Oh, yeah, is it working ? Oh, L.M.S.. Mhm. Okay. Oh. Meanwhile, i want to ask you if you have a try to contact-number virtual-assistant yeah, it's, another way of contacting you, the service at the help desk. Mhm. Yeah, yes, i've done that before. We're satisfied with the the the virtual seas. Yeah, i'm i'm in, i'm in oracle, and, yes, i contact virtual. I used a virtual process before also, okay, and now they're up, i think, it's, uh, t b, so you can try to use one of those on time. Okay, so is seventy O.K. regarding the the password, correct ? Okay, is there anything else i may assist ? Tell-me i'm good for now. Thank you. Okay, thank you for calling have-a-nice-day. Thanks bye.
-                Hello, heavy several services. My name is barbara can providing your full name or previous-ticket-number if you have one. Yeah. Ah, christopher pink-button hm. Okay, just a moment, please. So yeah. Fifteen. Your last name. Okay. Goodness, g o o d a good man. Oh, yeah. Oh! Hm. Yeah, oh, mhm, yeah, yeah, yeah, okay, yeah, you can send me your manager's name, Outlook say that again. O.K., please tell-me your manager's name. Yeah, maria southerly. Okay, and, uh, i'm going to send me a phone number, just in case you get. You can just kind of, yeah. Ah, two, one, five, 5, 1, 8 three, nine, seven one, seven one are you going to located in ah northwest, too ? Yes, okay, how may i assist ? Um, i need to have my, i guess, my password. Except for oracle. I sent iExpense, okay, and they use your name is the same as the the main one or a different. I think it's the same at the door, may see equipment here. One. Okay, i'm going to search for that one, to take a few moments, okay ? Mhm, yeah, yeah. Yeah. Oh, yeah. Yeah. Yeah. Oh, yeah. Oh! So i'm gonna search for seeing goodman a one. Point. Yeah, yeah, yeah, mhm. Oh, yeah. Mhm. Yeah, yeah, yeah. Oh, oh, yeah! Oh, yeah, yeah. Okay, mhm. Okay. Yeah, yeah. Yeah, yeah, mhm, mhm. Okay, so i see a change your password. I will give you a temporary one. It's seven thirty one, two, three, four, five. Okay, right, yeah, yeah, yeah, mhm. Oh, yeah. Okay. Okay, okay. They, uh, yeah, yeah, yeah, mhm, yeah, yeah. Mhm. Yeah. Yeah. Yeah, yeah, yeah. Oh, okay. Oh, yeah, is it working ? Oh, L.M.S.. Mhm. Okay. Oh. Meanwhile, i want to ask you if you have a try to contact-number virtual-assistant yeah, it's, another way of contacting you, the service at the help desk. Mhm. Yeah, yes, i've done that before. We're satisfied with the the the virtual seas. Yeah, i'm i'm in, i'm in oracle, and, yes, i contact virtual. I used a virtual process before also, okay, and now they're up, i think, it's, uh, t b, so you can try to use one of those on time. Okay, so is seventy O.K. regarding the the password, correct ? Okay, is there anything else i may assist ? Tell-me i'm good for now. Thank you. Okay, thank you for calling have-a-nice-day. Thanks bye.
-               Hello, heavy several services. My name is barbara can providing your full name or previous-ticket-number if you have one. Yeah. Ah, christopher pink-button hm. Okay, just a moment, please. So yeah. Fifteen. Your last name. Okay. Goodness, g o o d a good man. Oh, yeah. Oh! Hm. Yeah, oh, mhm, yeah, yeah, yeah, okay, yeah, you can send me your manager's name, Outlook say that again. O.K., please tell-me your manager's name. Yeah, maria southerly. Okay, and, uh, i'm going to send me a phone number, just in case you get. You can just kind of, yeah. Ah, two, one, five, 5, 1, 8 three, nine, seven one, seven one are you going to located in ah northwest, too ? Yes, okay, how may i assist ? Um, i need to have my, i guess, my password. Except for oracle. I sent iExpense, okay, and they use your name is the same as the the main one or a different. I think it's the same at the door, may see equipment here. One. Okay, i'm going to search for that one, to take a few moments, okay ? Mhm, yeah, yeah. Yeah. Oh, yeah. Yeah. Yeah. Oh, yeah. Oh! So i'm gonna search for seeing goodman a one. Point. Yeah, yeah, yeah, mhm. Oh, yeah. Mhm. Yeah, yeah, yeah. Oh, oh, yeah! Oh, yeah, yeah. Okay, mhm. Okay. Yeah, yeah. Yeah, yeah, mhm, mhm. Okay, so i see a change your password. I will give you a temporary one. It's seven thirty one, two, three, four, five. Okay, right, yeah, yeah, yeah, mhm. Oh, yeah. Okay. Okay, okay. They, uh, yeah, yeah, yeah, mhm, yeah, yeah. Mhm. Yeah. Yeah. Yeah, yeah, yeah. Oh, okay. Oh, yeah, is it working ? Oh, L.M.S.. Mhm. Okay. Oh. Meanwhile, i want to ask you if you have a try to contact-number virtual-assistant yeah, it's, another way of contacting you, the service at the help desk. Mhm. Yeah, yes, i've done that before. We're satisfied with the the the virtual seas. Yeah, i'm i'm in, i'm in oracle, and, yes, i contact virtual. I used a virtual process before also, okay, and now they're up, i think, it's, uh, t b, so you can try to use one of those on time. Okay, so is seventy O.K. regarding the the password, correct ? Okay, is there anything else i may assist ? Tell-me i'm good for now. Thank you. Okay, thank you for calling have-a-nice-day. Thanks bye."""
+    Hello, heavy several services. My name is barbara can providing your full name or previous-ticket-number if you have one. Yeah. Ah, christopher pink-button hm. Okay, just a moment, please. So yeah. Fifteen. Your last name. Okay. Goodness, g o o d a good man. Oh, yeah. Oh! Hm. Yeah, oh, mhm, yeah, yeah, yeah, okay, yeah, you can send me your manager's name, Outlook say that again. O.K., please tell-me your manager's name. Yeah, maria southerly. Okay, and, uh, i'm going to send me a phone number, just in case you get. You can just kind of, yeah. Ah, two, one, five, 5, 1, 8 three, nine, seven one, seven one are you going to located in ah northwest, too ? Yes, okay, how may i assist ? Um, i need to have my, i guess, my password. Except for oracle. I sent iExpense, okay, and they use your name is the same as the the main one or a different. I think it's the same at the door, may see equipment here. One. Okay, i'm going to search for that one, to take a few moments, okay ? Mhm, yeah, yeah. Yeah. Oh, yeah. Yeah. Yeah. Oh, yeah. Oh! So i'm gonna search for seeing goodman a one. Point. Yeah, yeah, yeah, mhm. Oh, yeah. Mhm. Yeah, yeah, yeah. Oh, oh, yeah! Oh, yeah, yeah. Okay, mhm. Okay. Yeah, yeah. Yeah, yeah, mhm, mhm. Okay, so i see a change your password. I will give you a temporary one. It's seven thirty one, two, three, four, five. Okay, right, yeah, yeah, yeah, mhm. Oh, yeah. Okay. Okay, okay. They, uh, yeah, yeah, yeah, mhm, yeah, yeah. Mhm. Yeah. Yeah. Yeah, yeah, yeah. Oh, okay. Oh, yeah, is it working ? Oh, L.M.S.. Mhm. Okay. Oh. Meanwhile, i want to ask you if you have a try to contact-number virtual-assistant yeah, it's, another way of contacting you, the service at the help desk. Mhm. Yeah, yes, i've done that before. We're satisfied with the the the virtual seas. Yeah, i'm i'm in, i'm in oracle, and, yes, i contact virtual. I used a virtual process before also, okay, and now they're up, i think, it's, uh, t b, so you can try to use one of those on time. Okay, so is seventy O.K. regarding the the password, correct ? Okay, is there anything else i may assist ? Tell-me i'm good for now. Thank you. Okay, thank you for calling have-a-nice-day. Thanks bye.
+    Hello, heavy several services. My name is barbara can providing your full name or previous-ticket-number if you have one. Yeah. Ah, christopher pink-button hm. Okay, just a moment, please. So yeah. Fifteen. Your last name. Okay. Goodness, g o o d a good man. Oh, yeah. Oh! Hm. Yeah, oh, mhm, yeah, yeah, yeah, okay, yeah, you can send me your manager's name, Outlook say that again. O.K., please tell-me your manager's name. Yeah, maria southerly. Okay, and, uh, i'm going to send me a phone number, just in case you get. You can just kind of, yeah. Ah, two, one, five, 5, 1, 8 three, nine, seven one, seven one are you going to located in ah northwest, too ? Yes, okay, how may i assist ? Um, i need to have my, i guess, my password. Except for oracle. I sent iExpense, okay, and they use your name is the same as the the main one or a different. I think it's the same at the door, may see equipment here. One. Okay, i'm going to search for that one, to take a few moments, okay ? Mhm, yeah, yeah. Yeah. Oh, yeah. Yeah. Yeah. Oh, yeah. Oh! So i'm gonna search for seeing goodman a one. Point. Yeah, yeah, yeah, mhm. Oh, yeah. Mhm. Yeah, yeah, yeah. Oh, oh, yeah! Oh, yeah, yeah. Okay, mhm. Okay. Yeah, yeah. Yeah, yeah, mhm, mhm. Okay, so i see a change your password. I will give you a temporary one. It's seven thirty one, two, three, four, five. Okay, right, yeah, yeah, yeah, mhm. Oh, yeah. Okay. Okay, okay. They, uh, yeah, yeah, yeah, mhm, yeah, yeah. Mhm. Yeah. Yeah. Yeah, yeah, yeah. Oh, okay. Oh, yeah, is it working ? Oh, L.M.S.. Mhm. Okay. Oh. Meanwhile, i want to ask you if you have a try to contact-number virtual-assistant yeah, it's, another way of contacting you, the service at the help desk. Mhm. Yeah, yes, i've done that before. We're satisfied with the the the virtual seas. Yeah, i'm i'm in, i'm in oracle, and, yes, i contact virtual. I used a virtual process before also, okay, and now they're up, i think, it's, uh, t b, so you can try to use one of those on time. Okay, so is seventy O.K. regarding the the password, correct ? Okay, is there anything else i may assist ? Tell-me i'm good for now. Thank you. Okay, thank you for calling have-a-nice-day. Thanks bye."""
 
-
-    r = {}
-    # r['sentiment'] = get_sentiment(call_text)
-    r['key_phrases'] = get_key_phrases(call_text)
-    r['entities'] = get_entities(call_text)
-    print(r['key_phrases'])
-    print(r['entities'])
+    kps = get_key_phrases(call_text)
+    print(kps)
+##    clean = remove_numbers(kps)
+##    print(clean)
     
