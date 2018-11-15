@@ -2,6 +2,7 @@ import boto3
 from sys import getsizeof
 import logging
 import os
+import text as text_processing
 
 # COMPREHEND_SIZE_LIMIT = int(os.environ.get('COMPREHEND_SIZE_LIMIT'))
 COMPREHEND_SIZE_LIMIT = 4974
@@ -77,67 +78,44 @@ def best_sentiment(sent_dict):
             sentiment = k
     return sentiment
 
-def remove_numbers(kps_list):
-    print(kps_list)
-    nums = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'
-            'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen'
-            'eighteen', 'nineteen', 'twenty', 'thirty', 'fourty', 'fifty', 'sixty',
-            'seventy', 'eighty', 'ninty', 'hundred']
-    useless = ['mhm', 'yeah', 'um', 'ah', 'a', 'the', 'o.k.']
-    processed = 0
-    removed = 0
-    print()
-    print(f"Length of input string: {len(kps_list)}")
-    for item in kps_list[:]:
-        processed += 1
-        logger.info(f"Working on {item}")
-        if item.lower() in useless:
-            logger.info(f"Removing '{item}'")
-            try:
-                kps_list.remove(item)
-                continue
-            except ValueError:
-                logger.warning(f"{item} already removed")
+##def clean_key_phrases(kps_list):
+##    """Removes digits or number words and other useless common words.
+##        Input: List of phrases
+##        Output: New list of phrases with useless ones removed"""
+##    print(kps_list)
+##    nums = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'
+##            'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen'
+##            'eighteen', 'nineteen', 'twenty', 'thirty', 'fourty', 'fifty', 'sixty',
+##            'seventy', 'eighty', 'ninty', 'hundred']
+##    useless = ['mhm', 'yeah', 'um', 'ah', 'a', 'the', 'o.k.', 'your']
+##    for item in kps_list[:]: # Taking slice of full list (essentially a copy) 
+##        logger.info(f"Working on {item}") # to avoid issues with removing items from list while looping through.
+##        if item.lower() in useless:
+##            logger.info(f"Removing '{item}'")
+##            try:
+##                kps_list.remove(item)
+##                continue
+##            except ValueError:
+##                logger.warning(f"{item} already removed")
+##                
+##        for part in item[:].split(' '):
+##            logger.info(f"Working on part '{part}'")
+##            if part.isdigit() or part.lower() in nums:
+##                logger.info(f"Trying to remove '{item}' because '{part}' is a digit or number")
+##                try:
+##                    kps_list.remove(item)
+##                    logger.info("Success")
+##                    break
+##                except ValueError:
+##                    logger.warning(f"{item} may already have been removed")
+##            if part in useless:
+##                try:
+##                    item.remove(part)
+##                except ValueError:
+##                    pass
+##                
+##    return kps_list 
                 
-        for part in item.split(' '):
-            logger.info(f"Working on part '{part}'")
-            if part.isdigit() or part.lower() in nums:
-                logger.info(f"Trying to remove '{item}' because '{part}' is a digit or number")
-                try:
-                    kps_list.remove(item)
-                    removed += 1
-                    logger.info("Success")
-                    break
-                except ValueError:
-                    logger.warning(f"{item} may already have been removed")
-                
-    print(f"Items processed: {processed}")
-    print(f"Items removed: {removed}")
-    return kps_list 
-                
-
-def clean(dictionary):
-    """
-        Filter out numbers from key phrases and entities
-        as they don't offer much benefit.
-        Also filters out words with 3 or less characters.
-        Targeting words like 'the', 'at' 'mhm' etc.
-    """
-    nums = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'
-            'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen'
-            'eighteen', 'nineteen', 'twenty', 'thirty', 'fourty', 'fifty', 'sixty',
-            'seventy', 'eighty', 'ninty', 'hundred']
-    clean_list = []
-    for key in dictionary:
-        for part in key.split(' '):
-            if part.isdigit() or part.lower() in nums:
-                pass
-            elif len(part) < 4:
-                pass
-            else:
-                clean_list.append(part)
-    return clean_list
-
 
 def create_set(ent_list):
     """
@@ -247,7 +225,7 @@ def get_key_phrases(text, language_code='en'):
             logger.error(str(e))
             raise e
         
-    return remove_numbers(list(set(x['Text'] for x in kps)))
+    return text_processing.clean(list(set(x['Text'] for x in kps)))
 
 # Example. Get sentiment of text below:
 # "I ordered a small and expected it to fit just right but it was a little bit
@@ -262,7 +240,7 @@ def get_key_phrases(text, language_code='en'):
 
 
 if __name__ == '__main__':
-    text = """I ordered a small and expected it to fit just right but it was a little bit
+    some_text = """I ordered a small and expected it to fit just right but it was a little bit
  more like a medium-large. It was great quality. It's a lighter brown than
  pictured but fairly close. Would be ten times better if it was lined with
  cotton or wool on the inside."""
@@ -272,6 +250,6 @@ if __name__ == '__main__':
 
     kps = get_key_phrases(call_text)
     print(kps)
-##    clean = remove_numbers(kps)
-##    print(clean)
+    entities = get_entities(call_text)
+    print(entities)
     
