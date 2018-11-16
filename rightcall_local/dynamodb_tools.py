@@ -5,7 +5,7 @@ import json
 import logging
 import os.path  
 
-module_logger = logging.getLogger('Rightcall.dynamodb_tools')
+module_logger = logging.getLogger(__name__)
 
 
 ##    datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/csvs/'
@@ -62,7 +62,7 @@ def get_db_item(reference_number, table):
             module_logger.debug(f"Successful. Returning {type(item)}")
             return item
         except KeyError as k_err:
-            module_logger.error("Item not in db")
+            module_logger.error(f"Item not in db: {reference_number}")
 
 def check_exists(reference_number, table):
     try:

@@ -2,7 +2,7 @@ from elasticsearch import Elasticsearch
 import boto3
 import json
 from os import path
-import dynamodb_tools
+from .import dynamodb_tools
 import logging
 
 module_logger = logging.getLogger('Rightcall.elasticsearch_tools')
@@ -112,7 +112,6 @@ def reindex(es, old_index, new_index):
 def delete_index(es, index_name):
     result = es.delete(index_name)
     return result
-
 
 if __name__ == '__main__':
 ##    print(exists(es, INDEX_NAME, 'c4707fTOd00126'))

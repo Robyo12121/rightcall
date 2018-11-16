@@ -64,7 +64,7 @@ def clean(input_list, exclude_list=[]):
                 'eighteen', 'nineteen', 'twenty', 'thirty', 'fourty', 'fifty', 'sixty',
                 'seventy', 'eighty', 'ninty', 'hundred']
     useless = ['mhm', 'yeah', 'um', 'ah', 'a', 'the', 'o.k.', 'your', 'hm', 'oh'
-               'okay', 'my', 'that']
+               'okay', 'my', 'that', 'i', 'alright', 'bye', 'uh', 'i i', 'oh']
     if not exclude_list:
         exclude_list = nums + useless
     output_list = []

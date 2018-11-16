@@ -5,7 +5,6 @@
 
 import dynamodb_tools
 import elasticsearch_tools
-import odigo_robin
 import s3 as s3py
 import pandas as pd
 import boto3
@@ -66,8 +65,11 @@ def RightcallLocal():
     logger.info(f"Getting objects from {BUCKET}")
     keys = s3.list_objects_v2(Bucket=BUCKET)
     logger.debug(f"Received {len(keys['Contents'])} objects from {BUCKET}")
+    json_data = []
+    for key in keys['Contents']:
+        json_data.append({'Name': key['Key'].split('--')[0]})
     
-    # For each record found in CSV file:
+    # For each record found in JSON file:
     for i, call_record in enumerate(json_data):
         logger.info('---------------------------------------')
         logger.info(f"Working on {i} : {call_record['Name']}")
@@ -96,7 +98,7 @@ def RightcallLocal():
             logger.info("Skipping database add...")
 
         logger.info(f"Checking {BUCKET} bucket for {call_record['Name']}")
-        s3_item = s3py.get_bucket_item(call_record['Name'], BUCKET)
+        s3_item = s3py.get_first_matching_item(call_record['Name'], BUCKET)
         if not s3_item:
             logger.warning(f"{call_record['Name']} not found in {BUCKET}")
             logger.info("Skipping...")

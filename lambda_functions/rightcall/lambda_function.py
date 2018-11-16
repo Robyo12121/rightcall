@@ -2,10 +2,11 @@ import json
 import boto3
 import os
 import logging
+import sys
 
-import text
-import comprehend
-import transcribe
+from . import text
+from . import comprehend
+from . import transcribe
 
 # Logging
 logging.basicConfig()
@@ -87,11 +88,14 @@ def Comprehend(event):
     filename = event['detail']['TranscriptionJobName'] + '.json'
     logger.info("Filename: {}".format(str(filename)))
     try:
+        logger.debug(f"Trying to get {filename} from {TRANSCRIPTS}")
         data = s3.get_object(Bucket=TRANSCRIPTS, Key=filename)
         data = data['Body'].read().decode('utf-8')
     except Exception as e:
         logger.error(str(e))
         raise e
+    else:
+        logger.debug("Success")
 
     try:
         data = json.loads(data)
@@ -99,7 +103,7 @@ def Comprehend(event):
         logger.error(str(e))
         raise e
 
-    logger.info(str(data.keys()))
+    logger.debug(f"Keys of object: {str(data.keys())}")
 
     # Give the transcript text to comprehend.py
     try:
@@ -108,24 +112,34 @@ def Comprehend(event):
         logger.error(str(e))
         raise e
 
+    if sys.getsizeof(transcript_text) <= 25:
+        logger.warning(f"Transcript is empty for {filename}. Exiting.")
+        return False
+
     r = {}
+    logger.debug(f"Creating record")
     r['reference_number'] = event['detail']['TranscriptionJobName'] \
         .split('--')[0]
+    logger.debug(f"Ref: {r['reference_number']}")
     r['text'] = transcript_text
-
+    logger.debug(f"Text: {r['text']}")
     # Get sentiment using AWS Comprehend
     sentiment = comprehend.get_sentiment(transcript_text)
     r['sentiment'] = sentiment
-    logger.info("Sentiment: {}".format(str(r['sentiment'])))
+    logger.debug("Sentiment: {}".format(str(r['sentiment'])))
     # Check promotion
     promo = text.check_promo(transcript_text)
     r['promotion'] = promo
-    logger.info("r promo: {}".format(str(r['promotion'])))
+    logger.debug("r promo: {}".format(str(r['promotion'])))
     # Get entities
     r['entities'] = comprehend.get_entities(transcript_text)
+    logger.debug(f"Text: {r['entities']}")
     # Get Key Phrases
     r['keyphrases'] = comprehend.get_key_phrases(transcript_text)
+    logger.debug(f"Text: {r['keyphrases']}")
     # Save to json file in 'comprehend.rightcall' bucket
+    logger.debug(f"Finished creating record")
+    logger.debug(f"Saving to {COMPREHEND} s3 bucket")
     try:
         response = s3.put_object(Body=json.dumps(r, indent=2),
                                  Bucket=COMPREHEND,
@@ -135,6 +149,7 @@ def Comprehend(event):
         logger.error(str(e))
         raise e
     else:
+        logger.debug("Success")
         return response
 
 

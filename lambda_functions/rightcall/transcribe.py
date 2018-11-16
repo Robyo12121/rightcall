@@ -1,6 +1,6 @@
 from os.path import basename
 import os
-from id_gen import id_generator
+from .id_gen import id_generator
 import boto3
 import logging
 
