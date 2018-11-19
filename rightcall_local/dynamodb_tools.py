@@ -8,9 +8,9 @@ import os.path
 module_logger = logging.getLogger(__name__)
 
 
-##    datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/csvs/'
-##    path_to_file = datapath + '20181107-161633.csv'
-datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/comprehend/'
+datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/csvs/'
+path_to_file = datapath + 'odigo4isRecorder_20181119-165658.csv'
+##datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/comprehend/'
 DB_ENDPOINT = 'http://localhost:8000'
 REGION = 'eu-central-1'
 TABLE_NAME = 'Rightcall'
@@ -27,7 +27,7 @@ def write_csv_to_db(csv_filepath, table):
     json_obj = json.loads(json_file)
     print(len(json_obj))
     for call in json_obj:
-        if check_exists(call['Name'], table):
+        if not check_exists(call['Name'], table):
             response = put_call(call, table)
         else:
             # update existing db 
@@ -48,6 +48,8 @@ def put_call(call, table):
     
 
 def get_db_item(reference_number, table):
+    if '.json' in reference_number:
+        raise ValueError('reference_number is wrong format: contains ".json"')
     module_logger.debug(f"get_db_item called with {reference_number} on {table}")
     try:
         response = table.get_item(Key={
@@ -63,8 +65,11 @@ def get_db_item(reference_number, table):
             return item
         except KeyError as k_err:
             module_logger.error(f"Item not in db: {reference_number}")
+            return False
 
 def check_exists(reference_number, table):
+    if '.json' in reference_number:
+        raise ValueError('reference_number is wrong format: contains ".json"')
     try:
         response = table.get_item(Key={
             'referenceNumber': reference_number,
@@ -82,7 +87,7 @@ def check_exists(reference_number, table):
 
 
 if __name__ == '__main__':
-    item = get_db_item('e22b20TOd10287', table)
+    item = get_db_item('b76993TOd10547', table)
     print(item)
 ##    response = table.put_item(Item=item)
 ##    for file in os.listdir(datapath):
