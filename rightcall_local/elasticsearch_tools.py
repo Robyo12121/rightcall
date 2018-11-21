@@ -1,51 +1,34 @@
+#! /usr/bin/python
+"""
+    'elasticsearch_tools.py' contains various functions for interacting with
+    the elasticsearch index running locally.
+    It uses the official elasticsearch python library: https://elasticsearch-py.readthedocs.io/en/master/
+    And the higher level Search DSL: https://elasticsearch-dsl.readthedocs.io/en/latest/
+
+"""
+
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 import boto3
 import json
 from os import path
 import logging
-##import sys
-##sys.path.append('../')
 import dynamodb_tools
+
 module_logger = logging.getLogger('Rightcall.elasticsearch_tools')
-
-
-
-directory = r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin'
-with open(directory + '/data/elasticsearch/mapping.json', 'r') as file:
-    MAPPING = json.load(file)
-s3 = boto3.client('s3')
-
-directory = path.dirname(__file__)
-
-COMPREHEND = 'comprehend.rightcall'
-REGION = 'eu-central-1'
-
-DB_ENDPOINT = 'http://localhost:8000'
-TABLE_NAME = 'Rightcall'
-
-es = Elasticsearch([{'host': 'localhost',
-                     'port': 9200}])
-INDEX_NAME = 'rightcall'
-TYPE_NAME = '_doc'
-
-dynamodb = boto3.resource('dynamodb',
-                          region_name=REGION,
-                          endpoint_url = DB_ENDPOINT)
-table = dynamodb.Table(TABLE_NAME)
-
 
 def create_index(index_name, request_body):
     """Create an elasticsearch index with name <index_name>(str)
         and mappings/settings contained withing <request_body>(dict)
         if an index with that name doesn't already exist"""
-    if es.indices.exists(INDEX_NAME):
-        module_logger.info(f"Deleting {INDEX_NAME} index ...")
-        res = es.indices.delete(index=INDEX_NAME)
-        module_logger.info(f"Response: {res}")
-    module_logger.info(f"Creating {INDEX_NAME} index...")
-    res = es.indices.create(index=index_name, body=request_body, ignore=400)
-    module_logger.info(f"Response: {res}")
+    if es.indices.exists(index_name):
+        module_logger.debug(f"{index_name} index already exists")
+        return False
+    else:
+        module_logger.debug(f"Creating {index_name} index...")
+        response = es.indices.create(index=index_name, body=request_body, ignore=400)
+        module_logger.debug(f"Response: {response}")
+        return response
 
 
 def rename(dictionary):
@@ -106,7 +89,6 @@ def load_bucket_recordings(es, index, bucket, doctype='_doc'):
             print("Exiting")
             return False
 
-
 def exists(es, index, referenceNumber):
     """Checks if a document exists within an elasticsearch index
     Returns boolean"""
@@ -120,13 +102,13 @@ def reindex(es, old_index, new_index):
     payload = {"source": {
                 "index": old_index
               },
-            "dest": {
+                "dest": {
                 "index": new_index}}
     result = es.reindex(body=payload)
     return result
 
 def delete_index(es, index_name):
-    result = es.delete(index_name)
+    result = es.indices.delete(index_name)
     return result
 
 def search_by_ref(referenceNumber, es, index_name):
@@ -153,10 +135,12 @@ def get_hit_fields(es_resp_obj_dict):
     return fields
 
 def get_mappings(es, index_name):
-    # SMELLY CODE IN HERE - query is a field mapping in the es cluster but shouldn't be
-    response = [field for field in es.indices.get_mapping(index_name)['rightcall'] \
+    """Return a list of field in the mapping defined for the index
+        'query' is a field mapping in the es cluster but shouldn't be, need to fix
+    """    
+    mapping_fields_list = [field for field in es.indices.get_mapping(index_name)['rightcall'] \
                 ['mappings']['_doc']['properties'] if field != 'query']
-    return response       
+    return mapping_fields_list       
 
 def fully_populated_in_elasticsearch(referenceNumber, es, INDEX_NAME):
     """
@@ -179,14 +163,53 @@ def fully_populated_in_elasticsearch(referenceNumber, es, INDEX_NAME):
         module_logger.debug(f"""{referenceNumber} elasticsearch document missing
             one or more fields from {db_meta_data_fields}""")
         return False
-            
+
+
+##def seconds_to_minutes(referenceNumber, es, INDEX_NAME):
+##    body = dict("query": {}
+##    response = es.update_by_query(INDEX_NAME, '_doc', )
 
 
 if __name__ == '__main__':
-##    resp = search_by_ref('b76993TOd10547', es, INDEX_NAME)
-##    hits = get_hit_fields(resp)
-##    print(hits)
-    mappings = get_mappings(es, INDEX_NAME)
-    print(set(mappings).issuperset(set(['date', 'length', 'skill'])))
+    module_logger = logging.getLogger(__name__)
+    LOGLEVEL = 'DEBUG'
+    module_logger.setLevel(LOGLEVEL)
+    ch = logging.StreamHandler()
+    ch.setLevel(LOGLEVEL)
+    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+    ch.setFormatter(formatter)
+    module_logger.addHandler(ch)
+
+    directory = r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin'
+    with open(directory + '/data/elasticsearch/mapping.json', 'r') as file:
+        MAPPING = json.load(file)
+        
+    s3 = boto3.client('s3')
+
+    directory = path.dirname(__file__)
+
+    COMPREHEND = 'comprehend.rightcall'
+    REGION = 'eu-central-1'
+
+    DB_ENDPOINT = 'http://localhost:8000'
+    TABLE_NAME = 'Rightcall'
+
+    es = Elasticsearch([{'host': 'localhost',
+                         'port': 9200}])
+    INDEX_NAME = 'rightcall'
+    TYPE_NAME = '_doc'
+
+    dynamodb = boto3.resource('dynamodb',
+                              region_name=REGION,
+                              endpoint_url = DB_ENDPOINT)
+    table = dynamodb.Table(TABLE_NAME)
+
+##    response = create_index('rightcall_temp', MAPPING)
+##    response = delete_index(es, 'rightcall')
+##    print(response)
+    response = reindex(es, 'rightcall_temp', 'rightcall')
+    print(response)
+    response = delete_index(es, 'rightcall_temp')
+    print(response)
 
     
