@@ -1,16 +1,20 @@
 # Rightcall
 **Name:** rightcall<br>
 **Description:** Right Call/Contact Center Monitoring written in Python<br>
-**GitHub:** https://github.com/korniichuk/rightcall
+**GitHub:** https://github.com/Robyo12121/rightcall
 
 ## Requirements
+Pandas, boto3, BeautiflSoup 4, Requestium, lxml, elasticsearch, 
+elasticsearch_dsl
+
 Please, install `chromium-chromedriver` package:
 ```
 $ sudo apt-get install chromium-chromedriver
 ```
 
-Next, install `beautifulsoup4`, `boto3`, `fbi`, `google-api-python-client`, `oauth2client`, `pandas`, `requestium` libraries:
+Next, install `beautifulsoup4`, `boto3`, `pandas`, 
+`elasticsearch`, `elasticsearch_dsl`, `requestium` libraries:
 ```
-$ sudo pip2 install beautifulsoup4 boto3 fbi google-api-python-client \
-       oauth2client pandas requestium
+$ sudo pip install beautifulsoup4 boto3 elasticsearch \
+       elasticsearch_dsl pandas requestium
 ```
