@@ -1,3 +1,4 @@
+#! /usr/bin/python
 """ Gets all filenames from s3 'comprehend.rightcall' bucket,
     
 """
