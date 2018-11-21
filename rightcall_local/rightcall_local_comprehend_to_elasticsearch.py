@@ -73,21 +73,34 @@ def write_to_csv(ref_list, path):
     except PermissionError:
         logger.info(df)
 
-def get_refs_from_s3_objects(bucket_name):
+def get_reference_number_from_object_name(object_name_string):
+    """ Given s3 object name: 'e23413582523--QUIDP.json' or 'e23413582523P.json':
+            return just 'e23413582523'
+    """         
+    if '--' in object_name_string:
+        reference_number = object_name_string.split('--')[0]
+    elif '.json' in object_name_string:
+        reference_number =  object_name_string.split('.')[0]
+    if '--' in object_name_string or '.json' in object_name_string:
+        raise ValueError(f"Invalid characters detected in reference number: {ref}")
+    return reference_number        
+    
+
+def get_all_refs_from_s3_objects(bucket_name):
+    """Given an s3 bucket name, returns a list of the reference numbers
+    contained in the names of all objects in that bucket
+    
+    Input: <string> 'comprehend.rightcall'
+    Output: <list> ['b310f08130r3', 'c210935j22239', ...]
+    """
     logger.info(f"Getting objects from {BUCKET}")
     keys = s3.list_objects_v2(Bucket=bucket_name)
     logger.debug(f"Received {len(keys['Contents'])} objects from {bucket_name}")
-    json_data = []
+    list_of_reference_numbers = []
     for key in keys['Contents']:
-        if '--' in key['Key']:
-            ref = key['Key'].split('--')[0]
-        else:
-            ref = key['Key'].split('.json')[0]
-        if '--' in ref or '.json' in ref:
-            raise ValueError(f"Invalid characters detected in reference number: {ref}")
-        else:
-            json_data.append({'Name': ref})
-    return json_data
+        ref = get_reference_number_from_object_name(key['Key'])
+        list_of_reference_numbers.append({'Name': ref})
+    return list_of_reference_numbers
 
 def RightcallLocal(json_data=None):
     """"""
@@ -98,7 +111,7 @@ def RightcallLocal(json_data=None):
         logger.error(f"json_data is not 'None': {json_data}")
         raise NotImplementedError
 
-    refs = get_refs_from_s3_objects(BUCKET)
+    refs = get_all_refs_from_s3_objects(BUCKET)
     get_meta_data = []
 
     # For each reference number:
