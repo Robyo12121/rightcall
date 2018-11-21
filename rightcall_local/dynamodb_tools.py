@@ -10,7 +10,7 @@ module_logger = logging.getLogger(__name__)
 
 
 datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/csvs/'
-path_to_file = datapath + 'odigo4isRecorder_20181119-165658.csv'
+path_to_file = datapath + 'odigo4isRecorder_20181121-123619.csv'
 ##datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/comprehend/'
 DB_ENDPOINT = 'http://localhost:8000'
 REGION = 'eu-central-1'
@@ -24,10 +24,9 @@ table = dynamodb.Table(TABLE_NAME)
 
 def write_csv_to_db(csv_filepath, table):
     file = pd.read_csv(csv_filepath, sep=';')
-    json_file = file.to_json(orient='records')
-    json_obj = json.loads(json_file)
-    print(len(json_obj))
-    for call in json_obj:
+    records_list = json.loads(file.to_json(orient='records'))
+    print(len(records_list))
+    for call in records_list:
         if not check_exists(call['Name'], table):
             response = put_call(call, table)
         else:
@@ -88,14 +87,14 @@ def check_exists(reference_number, table):
 
 
 if __name__ == '__main__':
-    item = get_db_item('b76993TOd10547', table)
-    print(item)
+##    item = get_db_item('b76993TOd10547', table)
+##    print(item)
 ##    response = table.put_item(Item=item)
 ##    for file in os.listdir(datapath):
 ##        check_exists(file.split('--')[0], table)
 
     
-##    response = write_csv_to_db(path_to_file, table)
+    response = write_csv_to_db(path_to_file, table)
 ##    response = get_db_item('b76993TOd10547', table)
 ##    from elasticsearch_upload import get_bucket_item
 ##    comp = get_bucket_item(response['referenceNumber'], 'comprehend.rightcall')

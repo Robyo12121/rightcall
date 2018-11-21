@@ -1,5 +1,14 @@
-#! /usr/bin/python
-""" Gets all filenames from s3 'comprehend.rightcall' bucket,
+""" Ensures all objects in the comprehend.rightcall s3 bucket
+    are added, along with their metadata to the local elasticsearch index.
+
+    Metadata is stored in local dynamodb database.
+
+    Flow:
+        If ref from s3 object exists in elasticsearch index with all its meta data:
+            Do Nothing
+        If exists without metadata add ref to list csv file of refs for which metadata
+            is needed.
+        If doesn't exist in index, download it and try to get metadata
     
 """
 
@@ -167,6 +176,7 @@ def RightcallLocal(json_data=None):
             s3_item = elasticsearch_tools.rename(s3_item)
             
         logger.debug(f"Combining data for {ref} from {table} and {BUCKET} and adding to {INDEX_NAME} index")
+
         result = elasticsearch_tools.load_call_record(
                 db_item,
                 s3_item,
