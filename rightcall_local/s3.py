@@ -92,49 +92,14 @@ def get_first_matching_item(partial_key, bucket_name):
     module_logger.debug(f"Received {type(resp)} item, returning it")
     return resp
 
-def remove_duplicates(bucket_name):
+
+def remove_duplicates_keep_latest(bucket_name):
     """Items in some rightcall related buckets have name format:
         <reference-number>--<6digituniqeID>
         This function checks the entire bucket for items with the
-        same reference number and removes all but one.
-
-        This should be modified to keep the latest object
+        same reference number and removes all but one, keeping the
+        one with the latest 'last modified' field.
     """
-    s3 = boto3.client('s3')
-    # key all keys in bucket
-    keys = s3.list_objects_v2(Bucket=bucket_name)['Contents']
-    bucket_keys = {key['Key'] for key in keys}
-    ref_set = set()
-    module_logger.debug(ref_set)
-    # for each item in bucket:
-    for key in keys:
-        # get ref number
-        ref = key['Key'].split('--')[0]
-        module_logger.debug(f"Working on {key['Key']}")
-        # If not in set:
-        if ref not in ref_set:
-            module_logger.debug(f"{ref} not in set, adding.")
-            # add it
-            ref_set.add(ref)
-            # If it's not already a file in the bucket
-            if ref not in bucket_keys:
-                # copy object to new object named just with ref number
-                module_logger.debug(f"Copying {key['Key']} to {ref}")
-                s3.copy_object(Bucket=bucket_name,
-                               CopySource={'Bucket': bucket_name, 'Key': key['Key']},
-                               Key=ref+'.json')
-            else:
-                module_logger.debug(f"{ref} in bucket already")
-        # IF in set already:
-        else:
-            module_logger.debug(f"{ref} in set already")
-            # Delete it
-            module_logger.debug(f"Deleting {key['Key']}")
-            response = s3.delete_object(
-                Bucket=bucket_name,
-                Key=key['Key'])
-
-def remove_all_but_latest(bucket_name):
     s3 = boto3.client('s3')
     keys = s3.list_objects_v2(Bucket=bucket_name)['Contents']
     unique_dict = {}
@@ -174,10 +139,11 @@ def remove_all_but_latest(bucket_name):
             # Not newer than current version
             else:
                 module_logger.debug(f"Current record is newer {unique_dict[ref]['LastModified']}.")
-                module_logger.debug(f"Deleting {key['Key']}")
-                response = s3.delete_object(
-                        Bucket=bucket_name,
-                        Key=key['Key'])
+
+            module_logger.debug(f"Deleting {key['Key']}")
+            response = s3.delete_object(
+                    Bucket=bucket_name,
+                    Key=key['Key'])
                     
 # Example. Upload '/tmp/example.mp3' file to Amazon S3 'examplebucket' bucket as
 # 'example.mp3' file
