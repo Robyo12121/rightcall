@@ -135,16 +135,16 @@ def Comprehend(event):
     sentiment = comprehend.get_sentiment(transcript_text)
     r['sentiment'] = sentiment
     logger.debug("Sentiment: {}".format(str(r['sentiment'])))
-    # Check promotion
-    promo = text.check_promo(transcript_text)
-    r['promotion'] = promo
-    logger.debug("r promo: {}".format(str(r['promotion'])))
     # Get entities
     r['entities'] = comprehend.get_entities(transcript_text)
     logger.debug(f"Text: {r['entities']}")
     # Get Key Phrases
     r['keyphrases'] = comprehend.get_key_phrases(transcript_text)
     logger.debug(f"Text: {r['keyphrases']}")
+    # Check promotion
+    promo = text.check_promo(transcript_text)
+    r['promotion'] = promo
+    logger.debug("r promo: {}".format(str(r['promotion'])))
     # Save to json file in 'comprehend.rightcall' bucket
     logger.debug(f"Finished creating record")
     logger.debug(f"Saving to {COMPREHEND} s3 bucket")
