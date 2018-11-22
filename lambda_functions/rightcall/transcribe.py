@@ -4,16 +4,9 @@ from .id_gen import id_generator
 import boto3
 import logging
 
-# Logging
-logging.basicConfig()
-logger = logging.getLogger()
-if os.getenv('LOG_LEVEL') == 'DEBUG':
-    logger.setLevel(logging.DEBUG)
-else:
-    logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
-
-def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
+def transcribe_mp3(src, dst, job_name=None, language_code='en-US'):
     """Transcribe mp3 file with AWS Transcribe.
     Input:
         src -- S3 location of the src mp3 file (required | type: str). Example:
@@ -29,10 +22,11 @@ def transcribe_mp3(src, dst=None, job_name=None, language_code='en-US'):
     logger.info("Transcribing mp3...")
     transcribe = boto3.client('transcribe')
     if not job_name:
-        logger.debug("Generating Id...")
-        logger
-        job_name = '--'.join(
-            [basename(src).replace('.mp3', ''), id_generator()])
+##        logger.debug("Generating Id...")
+##        job_name = '--'.join(
+##            [basename(src).replace('.mp3', ''), id_generator()])
+        job_name = basename(src).replace('.mp3', '')
+        logger.debug(f"Job Name: {job_name}")
 
     try:
         logger.debug("trying job...")
