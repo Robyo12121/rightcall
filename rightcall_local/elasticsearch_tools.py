@@ -204,11 +204,14 @@ if __name__ == '__main__':
                               endpoint_url = DB_ENDPOINT)
     table = dynamodb.Table(TABLE_NAME)
 
-    s3_item = {"referenceNumber": "00000000",
-               "text": "Just some stupid text",
-               "entities": ["Robin", "Test"],
-               "keyPhrases": ["This is just a test, dont worry"],
-               "promotion": "none",
-               "sentiment": "positive"}
+##    resp = create_index('rightcall_temp', MAPPING)
+##    print(resp)
+##    resp = reindex(es, 'rightcall', 'rightcall_temp')
+##    print(resp)
+##    resp = delete_index(es, 'rightcall')
+##    print(resp)
+    resp = reindex(es, 'rightcall_temp', 'rightcall')
+    print(resp)
+##    resp = delete_index('rightcall_temp')
                
     
