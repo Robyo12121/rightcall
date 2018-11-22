@@ -86,13 +86,17 @@ def write_to_csv(ref_list, path):
 def get_reference_number_from_object_name(object_name_string):
     """ Given s3 object name: 'e23413582523--QUIDP.json' or 'e23413582523P.json':
             return just 'e23413582523'
-    """         
+    """
+    logger.debug(f"Received: {object_name_string}")
     if '--' in object_name_string:
         reference_number = object_name_string.split('--')[0]
     elif '.json' in object_name_string:
         reference_number =  object_name_string.split('.')[0]
-    if '--' in object_name_string or '.json' in object_name_string:
-        raise ValueError(f"Invalid characters detected in reference number: {ref}")
+    else:
+        reference_number = object_name_string
+    logger.debug(f"Ref Num: {reference_number}")
+    if '--' in reference_number or '.json' in reference_number:
+        raise ValueError(f"Invalid characters detected in reference number: {object_name_string}")
     return reference_number        
     
 
