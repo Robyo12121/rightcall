@@ -4,9 +4,26 @@ import os
 import logging
 import sys
 
-from . import text
-from . import comprehend
-from . import transcribe
+if os.environ.get("AWS_EXECUTION_ENV") is not None:
+    import text
+    import comprehend
+    import transcribe
+    TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
+    MP3S = os.environ.get('MP3S')
+    COMPREHEND = os.environ.get('COMPREHEND')
+else:
+    import text
+    import comprehend
+    import transcribe
+    TRANSCRIPTS = 'transcribe.rightcall'
+    MP3S = 'mp3.rightcall'
+    COMPREHEND = 'comprehend.rightcall'
+    print(MP3S, TRANSCRIPTS, COMPREHEND)
+
+    
+##    from . import text
+##    from . import comprehend
+##    from . import transcribe
 
 # Logging
 logging.basicConfig()
@@ -20,15 +37,6 @@ else:
 class ThrottlingException(Exception):
     pass
 
-# TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
-# MP3S = os.environ.get('MP3S')
-# COMPREHEND = os.environ.get('COMPREHEND')
-
-
-TRANSCRIPTS = 'transcribe.rightcall'
-MP3S = 'mp3.rightcall'
-COMPREHEND = 'comprehend.rightcall'
-print(MP3S, TRANSCRIPTS, COMPREHEND)
 
 
 def Transcribe(event):
