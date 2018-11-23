@@ -15,36 +15,35 @@ def check_promo(text):
     """
 
     promo = 'none'
-    context_multi = ['reset password', 'password reset', 'forgot password',
-                     'forgot my password']
-    context_single = ['password', 'pass', 'parole', 'reset']
-    promo_multi = ['virtual assistant', 'virtual agent']
-    promo_single = ['virtual', 'assistant', 'agent']
+    password_problem_phrases = ['reset password', 'new-password','locked-me-out','password reset',
+                     'forgot password', 'forgot my password', 'currently-locked-out', 'password-expired']
+    password_problem_words = ['password', 'pass', 'parole', 'reset', 'locked', 'expired']
+    
+    promo_phrases = ['virtual assistant', 'virtual agent', 'virtual-assistant', 'vehicle assistance',
+                     'new-tool', 'ask-chat', 'ask chat']
+    promo_words = ['virtual', 'assistant', 'agent', 'chat']
+
     word_pattern = re.compile("(?:[a-zA-Z]+[-–’'`ʼ]?)*[a-zA-Z]+[’'`ʼ]?")
     words = word_pattern.findall(text)
-    # Check `context_single`
-    for el in context_multi:
-        if el in text:
+    
+    for item in password_problem_phrases:
+        if item in text:
             promo = 'fail'
             break
     if promo == 'none':
-        # Check `context_single`
-        for el in context_single:
-            if el in words:
+        for item in password_problem_words:
+            if item in words:
                 promo = 'fail'
                 break
-    # Check `promo_multi`
-    if promo == 'fail':
-        for el in promo_multi:
-            if el in text:
-                promo = 'success'
-                break
-    # Check `promo_single`
-    if promo == 'fail':
-        for el in promo_single:
-            if el in words:
-                promo = 'success'
-                break
+    # Removed if promo == 'fail' so that it always checks as agents can promote virtual assistant even if the callers problem was not password related
+    for item in promo_phrases:
+        if item in text:
+            promo = 'success'
+            break
+    for item in promo_words:
+        if item in words:
+            promo = 'success'
+            break
     return promo
 
 
