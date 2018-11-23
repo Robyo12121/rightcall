@@ -126,7 +126,7 @@ def Comprehend(event):
 
     r = {}
     logger.debug(f"Creating record")
-    r['reference_number'] = event['detail']['TranscriptionJobName'] \
+    r['referenceNumber'] = event['detail']['TranscriptionJobName'] \
         .split('--')[0]
     logger.debug(f"Ref: {r['reference_number']}")
     r['text'] = transcript_text
@@ -139,7 +139,7 @@ def Comprehend(event):
     r['entities'] = comprehend.get_entities(transcript_text)
     logger.debug(f"Text: {r['entities']}")
     # Get Key Phrases
-    r['keyphrases'] = comprehend.get_key_phrases(transcript_text)
+    r['keyPhrases'] = comprehend.get_key_phrases(transcript_text)
     logger.debug(f"Text: {r['keyphrases']}")
     # Check promotion
     promo = text.check_promo(transcript_text)
