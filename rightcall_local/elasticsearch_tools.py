@@ -164,6 +164,30 @@ def fully_populated_in_elasticsearch(referenceNumber, es, INDEX_NAME):
             one or more fields from {db_meta_data_fields}""")
         return False
 
+def reindex_with_correct_mappings(index_name, MAPPING):
+    """ Function to use incase mapping of index gets
+    messed up.
+    Creates a tempoarary index with a correct mapping,
+        Reindexs the documents from the old index to temp one.
+        Deletes the original index,
+        Recreates the old index with strict mapping
+        Reindexes temp index to old index
+        Deletes temp index
+
+        Needs some error checking"""
+    temp_name = index_name + '_temp'
+    resp = create_index(temp_name, MAPPING)
+    resp = reindex(es, index_name, temp_name)
+    resp = delete_index(es, index_name)
+    resp = create_index(index_name, MAPPING)
+    resp = reindex(es, temp_name, index_name)
+    resp = delete_index(es, temp_name)
+
+def update_document(es, ref_number, item):
+    body = {"doc": {**item}}
+    resp = es.update(es, doc_type='_doc', id=ref_number,
+                     body=body)
+    return resp
 
 ##def seconds_to_minutes(referenceNumber, es, INDEX_NAME):
 ##    body = dict("query": {}
@@ -204,14 +228,6 @@ if __name__ == '__main__':
                               endpoint_url = DB_ENDPOINT)
     table = dynamodb.Table(TABLE_NAME)
 
-##    resp = create_index('rightcall_temp', MAPPING)
-##    print(resp)
-##    resp = reindex(es, 'rightcall', 'rightcall_temp')
-##    print(resp)
-##    resp = delete_index(es, 'rightcall')
-##    print(resp)
-    resp = reindex(es, 'rightcall_temp', 'rightcall')
-    print(resp)
-##    resp = delete_index('rightcall_temp')
+    print(update_document(es, 'test_doc', {"promotion": "fail", "referenceNumber": "00000001"}))
                
     

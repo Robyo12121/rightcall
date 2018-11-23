@@ -42,7 +42,7 @@ def main():
     keys = s3.list_objects_v2(Bucket=TRANSCRIBE_BUCKET)
     for key in keys['Contents']:
         event = {'detail': {'TranscriptionJobName': None}}
-        if '.json' in key['Key']:
+        if '.json' in key['Key'] and not key['Key'].startswith('.'):
             logger.debug(key['Key'])
             event['detail']['TranscriptionJobName'] = key['Key'].split('.')[0]
             logger.debug(event)

@@ -12,18 +12,16 @@ if os.environ.get("AWS_EXECUTION_ENV") is not None:
     MP3S = os.environ.get('MP3S')
     COMPREHEND = os.environ.get('COMPREHEND')
 else:
-    import text
-    import comprehend
-    import transcribe
+    from . import text
+    from . import comprehend
+    from . import transcribe
     TRANSCRIPTS = 'transcribe.rightcall'
     MP3S = 'mp3.rightcall'
     COMPREHEND = 'comprehend.rightcall'
     print(MP3S, TRANSCRIPTS, COMPREHEND)
 
     
-##    from . import text
-##    from . import comprehend
-##    from . import transcribe
+
 
 # Logging
 logging.basicConfig()

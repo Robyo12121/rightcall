@@ -158,4 +158,4 @@ def remove_duplicates_keep_latest(bucket_name):
 #upload_dir('/tmp/', 'examplebucket')
 
 if __name__ == '__main__':
-    remove_all_but_latest('comprehend.rightcall')
+    remove_duplicates_keep_latest('transcribe.rightcall')
