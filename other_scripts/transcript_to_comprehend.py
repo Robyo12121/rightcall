@@ -1,4 +1,5 @@
 #! /usr/bin/python
+
 """This script runs the 'Comprehend' portion of the lambda function.
     It processes transcript.json files in transcribe.rightcall s3 bucket
     into comprehend.rightcall bucket and stores results in comprehend.rightcall s3 bucket.

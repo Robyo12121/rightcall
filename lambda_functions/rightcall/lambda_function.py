@@ -126,7 +126,7 @@ def Comprehend(event):
     logger.debug(f"Creating record")
     r['referenceNumber'] = event['detail']['TranscriptionJobName'] \
         .split('--')[0]
-    logger.debug(f"Ref: {r['reference_number']}")
+    logger.debug(f"Ref: {r['referenceNumber']}")
     r['text'] = transcript_text
     logger.debug(f"Text: {r['text']}")
     # Get sentiment using AWS Comprehend
@@ -138,7 +138,7 @@ def Comprehend(event):
     logger.debug(f"Text: {r['entities']}")
     # Get Key Phrases
     r['keyPhrases'] = comprehend.get_key_phrases(transcript_text)
-    logger.debug(f"Text: {r['keyphrases']}")
+    logger.debug(f"Text: {r['keyPhrases']}")
     # Check promotion
     promo = text.check_promo(transcript_text)
     r['promotion'] = promo

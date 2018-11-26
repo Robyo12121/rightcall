@@ -4,7 +4,6 @@ import json
 sys.path.append('../')
 
 from lambda_functions.rightcall.text import check_promo
-from text_v2 import check_promo2
 
 data = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/'
 json_path = data + 'comprehend/Promo/'
@@ -31,5 +30,4 @@ def test_promo_accuracy(function, data):
 
 if __name__ == '__main__':
     test_promo_accuracy(check_promo, promo_items)
-    test_promo_accuracy(check_promo2, promo_items)
 
