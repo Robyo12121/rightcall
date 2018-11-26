@@ -183,9 +183,9 @@ def reindex_with_correct_mappings(index_name, MAPPING):
     resp = reindex(es, temp_name, index_name)
     resp = delete_index(es, temp_name)
 
-def update_document(es, ref_number, item):
+def update_document(es, index_name, ref_number, item):
     body = {"doc": {**item}}
-    resp = es.update(es, doc_type='_doc', id=ref_number,
+    resp = es.update(index_name, doc_type='_doc', id=ref_number,
                      body=body)
     return resp
 
@@ -228,6 +228,8 @@ if __name__ == '__main__':
                               endpoint_url = DB_ENDPOINT)
     table = dynamodb.Table(TABLE_NAME)
 
-    print(update_document(es, 'test_doc', {"promotion": "fail", "referenceNumber": "00000001"}))
+    
+    print(update_document(es, 'rightcall', 'test_doc', {"promotion": "fail", "referenceNumber": "00000001",
+                                                    "sentiment": "none", "text": "Delete Me"}))
                
     

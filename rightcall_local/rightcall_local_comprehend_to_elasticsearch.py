@@ -116,18 +116,39 @@ def get_all_refs_from_s3_objects(bucket_name):
         list_of_reference_numbers.append({'Name': ref})
     return list_of_reference_numbers
 
-def RightcallLocal(json_data=None):
-    """"""
-    if json_data is None:
-        json_data = []
-    else:
-        logger.info(f"Num records to process: {len(json_data)}")
-        logger.error(f"json_data is not 'None': {json_data}")
-        raise NotImplementedError
-
+def update_existing_items(BUCEKT):
     refs = get_all_refs_from_s3_objects(BUCKET)
     get_meta_data = []
+    # Forcing the function to update all documents in index with values in objects in bucket
+    if update:
+        for i, call_record in enumerate(refs):
+            s3_item = None
+            ref = call_record['Name']
+            s3_item = s3py.get_first_matching_item(ref, BUCKET)
+            s3_item = elasticsearch_tools.rename(s3_item)
+            try:
+                result = elasticsearch_tools.update_document(es, INDEX_NAME, s3_item['referenceNumber'], s3_item)
+                logger.debug(f"Result: {result}")
+            except elasticsearch.exceptions.NotFoundError as err:
+                logger.error(str(err))
+        return
 
+def add_new_or_incomplete_items(BUCKET):
+    """Ensures elasticsearch index has all the records that exist in comprehend.rightcall bucket
+        and that they are fully populated with as much information as possible. 
+    Pulls objects down from comprehend.rightcall bucket.
+        For each object:
+            Checks if it exists in elasticsearch already.
+            Checks if it has all the required fields populated with data.
+            If so - moves on to next item
+            If not - Checks if that missing data can be found in dynamodb
+                if so - grabs it from dynamodb, combines it with s3 obeject data
+                    and uploads to elasticsearch index
+                if not - adds the filename (refNumber) to csv file to be returned."""
+    
+    refs = get_all_refs_from_s3_objects(BUCKET)
+    get_meta_data = []
+            
     # For each reference number:
     for i, call_record in enumerate(refs):
         s3_item = None
@@ -136,34 +157,29 @@ def RightcallLocal(json_data=None):
         logger.debug(f"Working on {i} : {call_record['Name']}")
         
         ref = call_record['Name']
-        # Exists in index?
+        
         if elasticsearch_tools.exists(es, INDEX_NAME, ref):
-            # In ES already
             logger.debug(f"{ref} already in {INDEX_NAME} index")               
 
         else:
             logger.debug(f"{ref} not in {INDEX_NAME} index")
             
-            # Download from s3
             logger.debug(f"Checking {BUCKET} bucket for {call_record['Name']}")
             s3_item = s3py.get_first_matching_item(ref, BUCKET)
             
-            # Prepare data for ES
-            logger.debug(f"cleaning data")
+            logger.debug(f"Preparing data")
             s3_item = elasticsearch_tools.rename(s3_item)
 
-        # Check if fully populated with metadata
+
         if elasticsearch_tools.fully_populated_in_elasticsearch(ref, es, INDEX_NAME):
             logger.debug(f"{ref} fully populated in {INDEX_NAME}")
             continue
         else:
             logger.debug(f"{ref} missing metadata")
                    
-        # Check if metadata exists in database
         logger.debug(f"Checking {table} database for missing metadata")
         db_item = dynamodb_tools.get_db_item(ref, table)
         if not db_item:
-            # Add ref to csv
             logger.debug(f"Adding {ref} to 'get_meta_data'")
             get_meta_data.append(ref)
             continue
@@ -171,7 +187,6 @@ def RightcallLocal(json_data=None):
             logger.debug(f"Data present in {table} database: {db_item}")
               
         # Upload to elasticsearch
-        
         if s3_item is None:
             logger.debug(f"Ensuring object is downloaded from {BUCKET}")
             s3_item = s3py.get_first_matching_item(ref, BUCKET)
@@ -197,6 +212,8 @@ def RightcallLocal(json_data=None):
 
 if __name__ == '__main__':
 ##    json_data = parse_csv(CSV)
-    get_meta_data = RightcallLocal(None)
-    write_to_csv(get_meta_data, RC_DIR + '/data/csvs/'+ 'to_download.csv')
-
+##    get_meta_data = add_new_or_incomplete_items('comprehend.rightcall')
+    
+##    if get_meta_data is not None:
+##        write_to_csv(get_meta_data, RC_DIR + '/data/csvs/'+ 'to_download.csv')
+    
