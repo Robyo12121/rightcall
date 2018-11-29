@@ -116,22 +116,20 @@ def get_all_refs_from_s3_objects(bucket_name):
         list_of_reference_numbers.append({'Name': ref})
     return list_of_reference_numbers
 
-def update_existing_items(BUCEKT):
+def update_existing_items(BUCKET):
     refs = get_all_refs_from_s3_objects(BUCKET)
     get_meta_data = []
-    # Forcing the function to update all documents in index with values in objects in bucket
-    if update:
-        for i, call_record in enumerate(refs):
-            s3_item = None
-            ref = call_record['Name']
-            s3_item = s3py.get_first_matching_item(ref, BUCKET)
-            s3_item = elasticsearch_tools.rename(s3_item)
-            try:
-                result = elasticsearch_tools.update_document(es, INDEX_NAME, s3_item['referenceNumber'], s3_item)
-                logger.debug(f"Result: {result}")
-            except elasticsearch.exceptions.NotFoundError as err:
-                logger.error(str(err))
-        return
+    for i, call_record in enumerate(refs):
+        s3_item = None
+        ref = call_record['Name']
+        s3_item = s3py.get_first_matching_item(ref, BUCKET)
+        s3_item = elasticsearch_tools.rename(s3_item)
+        try:
+            result = elasticsearch_tools.update_document(es, INDEX_NAME, s3_item['referenceNumber'], s3_item)
+            logger.debug(f"Result: {result}")
+        except Exception as err:
+            logger.error(str(err))
+    return
 
 def add_new_or_incomplete_items(BUCKET):
     """Ensures elasticsearch index has all the records that exist in comprehend.rightcall bucket
@@ -213,7 +211,7 @@ def add_new_or_incomplete_items(BUCKET):
 if __name__ == '__main__':
 ##    json_data = parse_csv(CSV)
 ##    get_meta_data = add_new_or_incomplete_items('comprehend.rightcall')
-    
+    update_existing_items('comprehend.rightcall')
 ##    if get_meta_data is not None:
 ##        write_to_csv(get_meta_data, RC_DIR + '/data/csvs/'+ 'to_download.csv')
     

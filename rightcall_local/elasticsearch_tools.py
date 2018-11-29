@@ -227,9 +227,13 @@ if __name__ == '__main__':
                               region_name=REGION,
                               endpoint_url = DB_ENDPOINT)
     table = dynamodb.Table(TABLE_NAME)
-
-    
-    print(update_document(es, 'rightcall', 'test_doc', {"promotion": "fail", "referenceNumber": "00000001",
-                                                    "sentiment": "none", "text": "Delete Me"}))
+##
+    temp_name = INDEX_NAME + '_temp'
+    resp = create_index(temp_name, MAPPING)
+    resp = reindex(es, INDEX_NAME, temp_name)
+    resp = delete_index(es, INDEX_NAME)
+    resp = create_index(INDEX_NAME, MAPPING)
+    resp = reindex(es, temp_name, INDEX_NAME)
+    resp = delete_index(es, temp_name)
                
     

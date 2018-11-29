@@ -140,8 +140,10 @@ def Comprehend(event):
     r['keyPhrases'] = comprehend.get_key_phrases(transcript_text)
     logger.debug(f"Text: {r['keyPhrases']}")
     # Check promotion
-    promo = text.check_promo(transcript_text)
-    r['promotion'] = promo
+    results = text.check_promotion_score(transcript_text)
+    r['promotion'] = results['Promo']
+    r['promotion_keywords'] = list(results['password_triggers']) + list(results['agent_triggers'])
+    r['promotion_score'] = results['agent_promoted_score']
     logger.debug("r promo: {}".format(str(r['promotion'])))
     # Save to json file in 'comprehend.rightcall' bucket
     logger.debug(f"Finished creating record")
