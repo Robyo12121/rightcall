@@ -21,50 +21,52 @@ import logging
 # import datetime
 
 
-RC_DIR = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/'
-CSV_DIR = RC_DIR + 'data/csvs/'
-MP3_DIR = RC_DIR + '/data/mp3s/'
-CSV = CSV_DIR + 'to_download.csv'
-REGION = 'eu-central-1'
+def setup():
+    RC_DIR = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/'
+    CSV_DIR = RC_DIR + 'data/csvs/'
+    MP3_DIR = RC_DIR + '/data/mp3s/'
+    CSV = CSV_DIR + 'to_download.csv'
+    REGION = 'eu-central-1'
 
-DB_ENDPOINT = 'http://localhost:8000'
-TABLE_NAME = 'Rightcall'
+    DB_ENDPOINT = 'http://localhost:8000'
+    TABLE_NAME = 'Rightcall'
 
-BUCKET = 'comprehend.rightcall'
+    BUCKET = 'comprehend.rightcall'
 
-INDEX_NAME = 'rightcall'
-TYPE_NAME = '_doc'
+    INDEX_NAME = 'rightcall'
+    TYPE_NAME = '_doc'
 
-dynamodb = boto3.resource('dynamodb',
-                          region_name=REGION,
-                          endpoint_url=DB_ENDPOINT)
-s3 = boto3.client('s3')
-es = elasticsearch_tools.Elasticsearch([{'host': 'localhost',
-                                         'port': 9200}])
-table = dynamodb.Table(TABLE_NAME)
+    dynamodb = boto3.resource('dynamodb',
+                              region_name=REGION,
+                              endpoint_url=DB_ENDPOINT)
+    s3 = boto3.client('s3')
+    es = elasticsearch_tools.Elasticsearch([{'host': 'localhost',
+                         'port': 9200}])
+    table = dynamodb.Table(TABLE_NAME)
 
-LOGLEVEL = 'DEBUG'
+    LOGLEVEL = 'DEBUG'
 
-# Logging
-levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-if LOGLEVEL not in levels:
-    raise ValueError(f"Invalid log level choice {LOGLEVEL}")
-logger = logging.getLogger('Rightcall')
-logger.setLevel(LOGLEVEL)
-# create console handler and set level to LOGLEVEL
-ch = logging.StreamHandler()
-ch.setLevel(LOGLEVEL)
-# create file handler and set level to DEBUG
-fh = logging.FileHandler('rightcall_local_comp2elasticsearch.log')
-fh.setLevel(logging.DEBUG)
-# create formatter
-formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
-# add formatter to ch
-ch.setFormatter(formatter)
-fh.setFormatter(formatter)
-# add ch to logger
-logger.addHandler(ch)
-logger.addHandler(fh)
+    # Logging
+    levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    if LOGLEVEL not in levels:
+        raise ValueError(f"Invalid log level choice {LOGLEVEL}")
+    logger = logging.getLogger('Rightcall')
+    logger.setLevel(LOGLEVEL)
+    # create console handler and set level to LOGLEVEL
+    ch = logging.StreamHandler()
+    ch.setLevel(LOGLEVEL)
+    # create file handler and set level to DEBUG
+    fh = logging.FileHandler('rightcall_local.log')
+    fh.setLevel(logging.DEBUG)
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+    # add formatter to ch
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+    # add ch to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+    return logger
 
 
 def parse_csv(path_to_file):
@@ -217,8 +219,9 @@ def add_new_or_incomplete_items(BUCKET):
 
 
 if __name__ == '__main__':
-    update_existing_items('comprehend.rightcall')
+    logger = setup()
 #    json_data = parse_csv(CSV)
 #    get_meta_data = add_new_or_incomplete_items('comprehend.rightcall')
+
 #    if get_meta_data is not None:
 #        write_to_csv(get_meta_data, RC_DIR + '/data/csvs/'+ 'to_download.csv')
