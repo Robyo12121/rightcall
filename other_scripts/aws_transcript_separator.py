@@ -1,18 +1,11 @@
 import json
-
-
-
-base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/'
-
-with open(base_path + 'c47fa6TVd10510--MP6KR5.json', 'r') as file:
-    data = json.load(file)
-
-
-
+import logging
 
 
 def tokanize_sentences(transcribe_data):
-    
+    """Divides transcript into sentences based on end of sentence punctuation,
+    the speaker changing, a gap without a word spoken exceeds the threshold or
+    the size limit threshold is reached."""
     transcript = transcribe_data['results']['transcripts'][0]
     items = transcribe_data['results']['items']
     contents = ""
@@ -41,8 +34,7 @@ def tokanize_sentences(transcribe_data):
 
     # Repeat the loop for each item (word and punctuation)
     # The transcription will be broken out into a number of sections that are referred to
-    # below as paragraphs. The paragraph is the unit text that is stored in the 
-    # elasticsearch index. It is broken out by punctionation, speaker changes, a long pause
+    # below as paragraphs.It is broken out by punctionation, speaker changes, a long pause
     # in the audio, or overall length
     for i in range(len(items)):
         reason = ""
@@ -122,14 +114,21 @@ def tokanize_sentences(transcribe_data):
 
             contents += word
 
-            return retval
+    return retval
 
 
 if __name__ == '__main__':
+
+    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/'
+
+    with open(base_path + 'c9caf2TVd10618--73YF8D.json', 'r') as file:
+        data = json.load(file)
+
     sentences = tokanize_sentences(data)
     for item in sentences:
         print(f"Speaker: {item['speaker']} : {item['text']}")
-                
+
+    print(len(sentences))
                     
                     
                         
