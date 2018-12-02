@@ -1,17 +1,11 @@
-<<<<<<< HEAD
 #! /user/bin/python
 import click
 from comprehend_to_elasticsearch import Comp2Elas
-=======
-import click
-import comprehend_to_elasticsearch
->>>>>>> Starting to implement click cli interface
 
 @click.group()
 def rightcall_local():
     pass
 
-<<<<<<< HEAD
 @rightcall_local.group()
 @click.option('--debug/--no-debug', default=False)
 @click.pass_context
@@ -46,22 +40,6 @@ def update(comp2elas, source):
     click.echo(unknown_refs)
     
 
-=======
-@rightcall_local.command()
-@click.option('-s','--source', 'source', type=str, required=True,  help='Source of data')
-def elasticsearch(source):
-    click.echo(f"Getting files from: {source}")
-    unknown_refs = comprehend_to_elasticsearch.add_new_or_incomplete_items(source)
-    click.echo(unknown_refs)
-    
-        
-@rightcall_local.command()
-@click.option('--count', default=1, help='Number of greetings.')
-@click.option('--name', prompt='Your Name:', help='The person to greet')
-def hi(count, name):
-    for x in range(count):
-        click.echo(f"Hi {name}!")
->>>>>>> Starting to implement click cli interface
 
 
 if __name__ == '__main__':
@@ -80,14 +58,5 @@ Things I want to be able to do:
     existing items.
 
     'elasticsearch add/update <source-bucket>/<source list> <dest-index>'
-<<<<<<< HEAD
-=======
-    
-
-    
-
-
-
->>>>>>> Starting to implement click cli interface
 
 """
