@@ -3,7 +3,10 @@
 
 import re
 import logging
-import nltk
+from nltk import PorterStemmer, WordNetLemmatizer
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -308,27 +311,59 @@ def generate_path(base_path):
                 data = json.load(file)
                 yield data
 
-        
+def process(raw_text):
+    # Get words
+    tokens = word_tokenize(raw_text)
+    words = [w.lower() for w in tokens]
+    # Stem words
+    porter_stemmer = PorterStemmer()
+    stems = [porter_stemmer.stem(word) for word in words]
+    # remove stop words
+    stop_words = set(stopwords.words('english'))
+    filtered_words = [w for w in stems if not w in stop_words]
+    word_pattern = re.compile("(?:[a-zA-Z]+[-–’'`ʼ]?)*[a-zA-Z]+[’'`ʼ]?")
+    filtered_words = word_pattern.findall(' '.join(filtered_words))
+    print(raw_text)
+    print(filtered_words)
+    print()
+    # Reassemble sentence
+    # Get vectors
+    # Calculate similarity between that and
+    
+
+       
     
 if __name__ == '__main__':
     import os
     import json
     base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/'
 
+    password_words = ['password', 'pass', 'parole', 'reset', 'locked', 'expired',
+                              'temporary', 'forgot', 'reset password', 'new-password','locked-me-out','password-reset',
+                 'forgot password', 'forgot-my-password', 'currently-locked-out', 'password-expired',
+                 'change-your-password', 'temporary-one']
+    
+    
+    promo_words = ['virtual', 'assistant', 'agent', 'chat', 'technology', 'service-now', 'tool',
+                   'vehicle', 'assistance', 'virtual assistant', 'virtual agent', 'virtual-assistant',
+                     'new-tool', 'ask-chat', 'ask chat', 'ask-i', 'ask-it', 'chat-with-us']
+    stemmer = PorterStemmer()
+    password_stems = [stemmer.stem(word) for word in password_words]
+    promo_stems = [stemmer.stem(word) for word in promo_words]
+
+    password_sentence = ' '.join(password_stems)
+    promo_sentence = ' '.join(promo_stems)
+    print(password_sentence)
+    print(promo_sentence)
+    
     for data in generate_path(base_path):
+        # Custom sentence tokanizer using AWS transcribe data
         sentences = tokanize_sentences(data)
         
-
         for sentence in sentences:
-            stem_sentence = get_stems(sentence['text'])
-            vectors = get_vectors(stem_sentence)
+            text = sentence['text']
+            process(text)
             
-            print(f"{data['jobName']} - {sentence['text']}")
-            print(f"{stem_sentence}")
-            print(f"{vectors}")
-            print()
-            
-
 
             
 ##    promo, words = check_promo(text)
