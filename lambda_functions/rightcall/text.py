@@ -4,6 +4,9 @@
 import re
 import logging
 import nltk
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 def clean(input_list, exclude_list=[]):
     """Returns list with  digits, numberwords and useless words from list of
@@ -149,10 +152,20 @@ def check_promotion_score(text):
         results['Promo'] = 'success'
     return results
 
+
 def tokanize_sentences(transcribe_data):
     """Divides transcript into sentences based on end of sentence punctuation,
     the speaker changing, a gap without a word spoken exceeds the threshold or
-    the size limit threshold is reached."""
+    the size limit threshold is reached.
+
+    Input: AWS Transcribe input json document:
+            {'results': {
+                    'transcripts': [],
+                    'items': [{'start_time': }]
+                    'speaker_labels': {
+                        'segments': []
+                        
+    Output: """
     transcript = transcribe_data['results']['transcripts'][0]
     items = transcribe_data['results']['items']
     contents = ""
@@ -263,6 +276,29 @@ def tokanize_sentences(transcribe_data):
 
     return retval
 
+def get_vectors(*strs):
+    text = [t for t in strs]
+    vectorizer = CountVectorizer(text)
+    vectorizer.fit(text)
+    return vectorizer.transform(text).toarray()
+
+def get_stems(sentence):
+    word_pattern = re.compile("(?:[a-zA-Z]+[-–’'`ʼ]?)*[a-zA-Z]+[’'`ʼ]?")
+    words = word_pattern.findall(sentence)
+
+    porter_stemmer = nltk.PorterStemmer()
+    stems = [porter_stemmer.stem(word) for word in words]
+    stem_sentence = ' '.join(stems) 
+    return stem_sentence
+
+def get_lemmas(sentence):
+    wordnet_lemmatizer = nltk.WordNetLemmatizer()
+    word_pattern = re.compile("(?:[a-zA-Z]+[-–’'`ʼ]?)*[a-zA-Z]+[’'`ʼ]?")
+    words = word_pattern.findall(sentence)
+    lemmas = [wordnet_lemmatizer.lemmatize(word) for word in words]
+    return lemmas
+
+
 def generate_path(base_path):
     """Generate open file path for each file in
     given directory if it is json file"""
@@ -275,17 +311,22 @@ def generate_path(base_path):
         
     
 if __name__ == '__main__':
-##    import os
-##    import json
-##    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/comprehend/Promo/'
-##    for data in generate_path(base_path):
-##        text = data['text']
-##        ref  = data['reference_number']
-##        results = check_promotion_score(text)
-##        print(f"{ref} -- Password score: {results['password_error_score']} -- Password triggers: {results['password_triggers']}")
-##        print(f"{ref} -- Agent Promoted Score: {results['agent_promoted_score']} -- Agent triggers: {results['agent_triggers']}")
-##        print(f"{ref} -- Promotion: {results['Promo']}")
-##        print()
+    import os
+    import json
+    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/'
+
+    for data in generate_path(base_path):
+        sentences = tokanize_sentences(data)
+        
+
+        for sentence in sentences:
+            stem_sentence = get_stems(sentence['text'])
+            vectors = get_vectors(stem_sentence)
+            
+            print(f"{data['jobName']} - {sentence['text']}")
+            print(f"{stem_sentence}")
+            print(f"{vectors}")
+            print()
             
 
 
