@@ -3,6 +3,9 @@ import logging
 import numpy as np
 from math import sqrt
 import sys
+import logging
+import os
+import json
 
 sys.path.append('../')
 from lambda_functions.rightcall.text import tokanize_aws_transcript
@@ -15,7 +18,29 @@ from nltk.probability import FreqDist
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-
+# Logging
+LOGLEVEL = 'DEBUG'
+def setupLogging(LOGLEVEL):
+    levels=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    if LOGLEVEL not in levels:
+        raise ValueError(f"Invalid log level choice {LOGLEVEL}")
+    logger = logging.getLogger(__name__)
+    logger.setLevel(LOGLEVEL)
+    # create console handler and set level to LOGLEVEL
+    ch = logging.StreamHandler()
+    ch.setLevel(LOGLEVEL)
+    # create file handler and set level to DEBUG
+    fh = logging.FileHandler(__file__.split('.')[0]+ '.log')
+    fh.setLevel(logging.DEBUG)
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+    # add formatter to ch
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+    # add ch to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+    return logger
 
 def get_vectors(*strs):
     text = [t for t in strs]
@@ -42,20 +67,28 @@ def get_lemmas(sentence):
     return lemmas
 
 
-def generate_path(base_path):
+def generate_path(path):
     """Generate open file path for each file in
     given directory if it is json file"""
-    if '.' in base_path:
-        if '.json' in base_path:
-            with open(base_path, 'r') as file:
-                data = json.load(file)
-                yield data
-    else:
-        for item in os.listdir(base_path):
-            if '.json' in item:
-                with open(base_path+item, 'r') as file:
+    if '.json' in path:
+            try:
+                with open(path, 'r') as file:
                     data = json.load(file)
                     yield data
+            except Exception as err:
+                logger.error(str(err))
+                raise err
+    else:
+        for item in os.listdir(path):
+            logger.debug(item)
+            if '.json' in item:
+                try:
+                    with open(path+item, 'r') as file:
+                        data = json.load(file)
+                        yield data
+                except Exception as err:
+                    logger.error(str(err))
+                    raise err                    
 
 def bagofwords(sentence_words, vocab):
     """Given tokenized, words and a vocab
@@ -104,10 +137,19 @@ def calculate_cosine_similarity(norm_vec_a, norm_vec_b):
 
 
 def construct_vocab(words1, words2):
+    """Combines words from two sentences into a single
+        dictionary
+        Input: words1 - List of strings
+               words2 - List of strings
+        Output: vocab - dictionary where key is word, value is weight of word"""
     all_words = set(words1 + words2)
     vocab={}
-    for i,word in enumerate(all_words):
-        vocab[word] = i
+    for word in all_words:
+        # Give words in this list higher weighting as it almost certainly means a promotion
+        if word in ['virtual-assist']:
+            vocab[word] = 2
+        else:
+            vocab[word] = 1
     return vocab
 
 
@@ -119,8 +161,7 @@ def get_sentences(data):
     
     if type(data) is dict:
         transcript_name = data['jobName'].split('--')[0]
-        print()
-        print(transcript_name)
+        logger.info(transcript_name)
         # Custom sentence tokanizer using AWS transcribe data
         transcribe_sents = tokanize_aws_transcript(data)
         sentences = [sentence['text'] for sentence in transcribe_sents]
@@ -134,73 +175,79 @@ def get_sentences(data):
         sentences.append({'text': data})
         
     else:
-        print("TypeError")
+        logger.error("TypeError")
         return False
     return sentences
 
 
-def process(sent1, sent2, debug=False):
+def sentence_similarity(sentence, keywords):
     # Preprocess both items (tokenize, stem, stopwords, lower-case)
-    sent1 = preprocess(sent1)
-    sent2 = preprocess(sent2)
-    if not sent1 or not sent2:
+    words1 = preprocess(sentence)
+    words2 = preprocess(keywords)
+    if not words1:
         return 0
-
     # Create vocab containing terms of both sentences
-    vocab = construct_vocab(sent1, sent2)
-
+    vocab = construct_vocab(words1, words2)
     # Create term frequency vectors of each sentence compared to the vocabulary
-    tf_sent1 = bagofwords(sent1, vocab.keys())
-    tf_sent2 = bagofwords(sent2, vocab.keys())
+    tf_words1 = bagofwords(words1, vocab.keys())
+    tf_words2 = bagofwords(words2, vocab.keys())
 
     # Normalize vectors so all elements add up to 1 (eliminates effect of longer sentences)
-    tf_sent1_norm = normalize_tf(tf_sent1)
-    tf_sent2_norm = normalize_tf(tf_sent2)
+    tf_words1_norm = normalize_tf(tf_words1)
+    tf_words2_norm = normalize_tf(tf_words2)      
     # Calculate Cosine Similarity between two vectors
-    similarity = calculate_cosine_similarity(tf_sent1_norm, tf_sent2_norm)
-    if debug:
-        print(f"Sent 1: {sent1}")
-        print(f"Sent 2: {sent2}")
-        print(vocab)
-        print(f"TF of Sent 1: {tf_sent1}")
-        print(f"TF of Sent 2: {tf_sent2}")        
+    similarity = calculate_cosine_similarity(tf_words1_norm, tf_words2_norm)
+      
     return similarity
-    
+
+
+def document_similarity(document, keywords_string, threshold):
+    sentences = get_sentences(document)
+    similarity_sum = 0
+    VA_BOOST = 0
+    VA_BOOST += threshold 
+    for sentence in sentences:
+        # For each sentence in data, get its cosine similarity to promo_set
+        similarity = sentence_similarity(sentence, keywords_string)
+        if similarity > 0:
+            logger.debug(f"Similarity Score: {similarity} -- Sentence: {sentence} -- Length: {len(sentence)}")
+            # Summing similarity scores for each sentence to get score for entire document (may reintroduce effect of longer sentences having higher score
+            # that normalizing was supposed to eliminate
+            similarity_sum += similarity
+            if 'virtual-assistant' in sentence:
+                logger.debug(f"'virtual-assistant' detected. Increasing similarity sum by {VA_BOOST}")
+                similarity_sum += VA_BOOST
+
+    logger.info(f"Similarity Sum for file: {similarity_sum} - Threshold: {threshold}")
+    if similarity_sum > threshold:
+        return True
+    else:
+        return False
+            
 
     
 if __name__ == '__main__':
-    import os
-    import json
-##    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/b76152TVd00246.json'  
-    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/'
-    promo_words = ['virtual', 'agent', 'chat', 'technology', 'service-now', 'tool',
-                   'vehicle', 'virtual assistant', 'virtual agent', 'virtual-assistant',
-                     'new-tool', 'ask-chat', 'ask chat', 'ask-i', 'ask-it', 'chat-with-us',
-                   'contact']
-
-    promo_sent = ' '.join(promo_words)
-   
-
-##    test = 'Have you ever tried contacting our virtual assistant?'
-##    similarity = process(test, promo_sent)
-##    print(f"Similarity: {similarity}")
+    logger = setupLogging('DEBUG')
+    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/'
     
-    SIMILARITY_THRESHOLD = 0.06
-    
+    promo_words = ['virtual', 'chat', 'technology', 'service-now', 'tool',
+                   'vehicle assist', 'virtual agent', 'virtual-assistant',
+                     'new-tool', 'ask-chat', 'chat', 'chat-with-us']
+
+    smaller_promo_words = ['technology', 'tool','virtual-assistant',
+                     'new-tool', 'ask-chat', 'chat', 'chat-with-us', 'pink-button']
+
+    promo_sent = ' '.join(smaller_promo_words)
+    SIMILARITY_THRESHOLD = 0.4
+    total_promos = 0
+    total_docs = 0
     for data in generate_path(base_path):
-        hits = []
-        sentences = get_sentences(data)
-        
-        for sentence in sentences:
-            print(f"Raw Text: {sentence}")
-            # For each sentence in data, get its cosine similarity to promo_set
-            similarity = process(sentence, promo_sent, debug=False)
-            print(f"Similarity Score: {similarity}")
-            if similarity >= SIMILARITY_THRESHOLD:
-                hits.append(sentence)
-
         print()
-        print(hits)
-    
+        promotion = document_similarity(data, promo_sent, SIMILARITY_THRESHOLD)
+        logger.info(f"Promotion: {promotion}")
+        if promotion:
+            total_promos += 1
+        total_docs += 1
+    logger.info(f"Total Promotions: {total_promos} out of {total_docs} files")
 
 

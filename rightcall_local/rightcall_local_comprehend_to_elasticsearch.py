@@ -56,7 +56,7 @@ logger.setLevel(LOGLEVEL)
 ch = logging.StreamHandler()
 ch.setLevel(LOGLEVEL)
 # create file handler and set level to DEBUG
-fh = logging.FileHandler('rightcall_local.log')
+fh = logging.FileHandler('rightcall_local_comp2elasticsearch.log')
 fh.setLevel(logging.DEBUG)
 # create formatter
 formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
