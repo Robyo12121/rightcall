@@ -202,7 +202,7 @@ def sentence_similarity(sentence, keywords):
 
 
 def document_similarity(document, keywords_string, threshold):
-    sentences = get_sentences(document)
+    sentences = get_sentences(document)    
     similarity_sum = 0
     VA_BOOST = 0
     VA_BOOST += threshold 
@@ -210,7 +210,7 @@ def document_similarity(document, keywords_string, threshold):
         # For each sentence in data, get its cosine similarity to promo_set
         similarity = sentence_similarity(sentence, keywords_string)
         if similarity > 0:
-            logger.debug(f"Similarity Score: {similarity} -- Sentence: {sentence} -- Length: {len(sentence)}")
+            logger.debug(f"Similarity Score: {similarity} -- Sentence: {sentence}")
             # Summing similarity scores for each sentence to get score for entire document (may reintroduce effect of longer sentences having higher score
             # that normalizing was supposed to eliminate
             similarity_sum += similarity
@@ -228,7 +228,7 @@ def document_similarity(document, keywords_string, threshold):
     
 if __name__ == '__main__':
     logger = setupLogging('DEBUG')
-    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/'
+    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/test/'
     
     promo_words = ['virtual', 'chat', 'technology', 'service-now', 'tool',
                    'vehicle assist', 'virtual agent', 'virtual-assistant',

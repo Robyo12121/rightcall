@@ -3,6 +3,8 @@
 
 import re
 import logging
+import os
+import json
 
 
 
@@ -274,5 +276,45 @@ def tokanize_aws_transcript(transcribe_data):
 
     return retval
 
+def generate_path(path):
+    """Generate open file path for each file in
+    given directory if it is json file"""
+    if '.json' in path:
+            try:
+                with open(path, 'r') as file:
+                    data = json.load(file)
+                    yield data
+            except Exception as err:
+                raise err
+    else:
+        for item in os.listdir(path):
+            if '.json' in item:
+                try:
+                    with open(path+item, 'r') as file:
+                        data = json.load(file)
+                        yield data
+                except Exception as err:
+                    raise err 
+
+
+if __name__ == '__main__':
+    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/test/'
+    total_docs = 0
+    total_promos = 0
+    for data in generate_path(base_path):
+        print()
+        results = check_promotion_score(data['results']['transcripts'][0]['transcript'])
+        print(results['Promo'])
+        if results['Promo'] == 'success':
+            total_promos += 1
+        total_docs += 1
+    print(f"Total Promotions: {total_promos} out of {total_docs} files")
+
+
+    
+
+
+    
+    
 
 
