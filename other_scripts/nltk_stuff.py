@@ -200,23 +200,47 @@ def sentence_similarity(sentence, keywords):
       
     return similarity
 
+def count_hits_in_sentence(sentence, keywords_string):
+    words = preprocess(sentence)
+    keywords = preprocess(keywords_string)
+    count = 0
+    for keyword in keywords:
+        if keyword in words:
+            count += 1
+    return count
 
-def document_similarity(document, keywords_string, threshold):
+
+def document_similarity(document, keywords_string, threshold=0.4):
     sentences = get_sentences(document)    
     similarity_sum = 0
-    VA_BOOST = 0
-    VA_BOOST += threshold 
+    VA_BOOST = threshold 
+    COUNT_BOOST = 0.1
+    num_sentence_hits = 0
+    word_hit_count = 0
+    virtual_assistant_hit = False
+    
     for sentence in sentences:
         # For each sentence in data, get its cosine similarity to promo_set
         similarity = sentence_similarity(sentence, keywords_string)
         if similarity > 0:
+            num_sentence_hits += 1
             logger.debug(f"Similarity Score: {similarity} -- Sentence: {sentence}")
             # Summing similarity scores for each sentence to get score for entire document (may reintroduce effect of longer sentences having higher score
             # that normalizing was supposed to eliminate
             similarity_sum += similarity
-            if 'virtual-assistant' in sentence:
+            if 'virtual-assistant' in sentence and virtual_assistant_hit == False:
+                virtual_assistant_hit = True
                 logger.debug(f"'virtual-assistant' detected. Increasing similarity sum by {VA_BOOST}")
                 similarity_sum += VA_BOOST
+                
+            word_hit_count += count_hits_in_sentence(sentence, keywords_string)
+            
+    # If low number of sentences hits and no virtual assistant detected, add extra boost
+    # based on number of individual word hits
+    if num_sentence_hits <= 3 and virtual_assistant_hit == False:
+        logger.debug("Sentence Hits 2 or less and no virtual_assistant detected")
+        logger.debug(f"Document Word Hit Count: {word_hit_count}. Increasing similarity sum by {word_hit_count*COUNT_BOOST}")
+        similarity_sum += word_hit_count*COUNT_BOOST
 
     logger.info(f"Similarity Sum for file: {similarity_sum} - Threshold: {threshold}")
     if similarity_sum > threshold:
@@ -230,10 +254,13 @@ if __name__ == '__main__':
     logger = setupLogging('DEBUG')
     base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/test/'
     
-    promo_words = ['virtual', 'chat', 'technology', 'service-now', 'tool',
-                   'vehicle assist', 'virtual agent', 'virtual-assistant',
-                     'new-tool', 'ask-chat', 'chat', 'chat-with-us']
+##    promo_words = ['virtual', 'chat', 'technology', 'tool',
+##                   'vehicle', 'virtual agent', 'virtual-assistant',
+##                     'new-tool', 'ask-chat', 'chat', 'chat-with-us', 
+##                   'pink-button']
 
+
+    # Keep this intact - do not modify
     smaller_promo_words = ['technology', 'tool','virtual-assistant',
                      'new-tool', 'ask-chat', 'chat', 'chat-with-us', 'pink-button']
 
