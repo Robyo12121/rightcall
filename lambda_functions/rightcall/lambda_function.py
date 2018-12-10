@@ -145,7 +145,7 @@ def Comprehend(event):
     r['keyPhrases'] = comprehend.get_key_phrases(transcript_text)
     logger.debug(f"Text: {r['keyPhrases']}")
     # Check promotion
-    results = promotion.document_similarity(transcript_text)
+    results = promotion.Promotion(data)
     r['promotion'] = results['Promo']
     logger.debug("r promo: {}".format(str(r['promotion'])))
     # Save to json file in 'comprehend.rightcall' bucket

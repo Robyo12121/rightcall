@@ -10,11 +10,11 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 
-from text import tokanize_aws_transcript
+try:
+    from text import tokanize_aws_transcript
+except Exception as e:
+    from .text import tokanize_aws_transcript
 
-
-# Logging
-LOGLEVEL = 'DEBUG'
 
 
 
@@ -159,6 +159,7 @@ def get_sentences(data):
     """return a list of sentences
     given a json document, a list or
     a single string"""
+    logger = logging.getLogger()
     sentences = []
     if type(data) is dict:
         transcript_name = data['jobName'].split('--')[0]
@@ -212,6 +213,7 @@ def count_hits_in_sentence(sentence, keywords_string):
 
 
 def document_similarity(document, keywords_string, threshold=0.4):
+    logger = logging.getLogger()
     sentences = get_sentences(document)
     similarity_sum = 0
     VA_BOOST = threshold
@@ -250,19 +252,20 @@ def document_similarity(document, keywords_string, threshold=0.4):
         return False
 
 
-def lambda_entrypoint(transcript_text):
+def Promotion(transcript_text):
+    LOGLEVEL = 'DEBUG'
     smaller_promo_words = ['technology', 'tool', 'virtual-assistant',
                            'new-tool', 'ask-chat', 'chat', 'chat-with-us', 'pink-button']
 
     promo_sent = ' '.join(smaller_promo_words)
     SIMILARITY_THRESHOLD = 0.4
-    promotion = document_similarity(data, promo_sent, SIMILARITY_THRESHOLD)
+    promotion = document_similarity(transcript_text, promo_sent, SIMILARITY_THRESHOLD)
     results = {}
     if promotion:
         results['Promo'] = 'success'
     else:
         results['Promo'] = 'none'
-    return promotion
+    return results
 
 
 if __name__ == '__main__':
