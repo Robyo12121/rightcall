@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import re
 import logging
 import numpy as np
@@ -5,15 +6,15 @@ from math import sqrt
 import sys
 import os
 import json
-from nltk import PorterStemmer, WordNetLemmatizer
+import nltk
+from nltk import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from sklearn.feature_extraction.text import CountVectorizer
 
-try:
+if os.environ.get("AWS_EXECUTION_ENV") is not None:
+    nltk.data.path.append("/nltk_data")
     from text import tokanize_aws_transcript
-except Exception as e:
-    from .text import tokanize_aws_transcript
+
 
 
 
@@ -42,29 +43,17 @@ def setupLogging(LOGLEVEL):
     return logger
 
 
-def get_vectors(*strs):
-    text = [t for t in strs]
-    vectorizer = CountVectorizer(text)
-    vectorizer.fit(text)
-    return vectorizer.transform(text).toarray()
-
-
 def get_stems(sentence):
+    """Given a sentence in a string:
+    Get all individual words using regex then stem those words
+    using PorterStemmer from NLTK
+    Return: List of stems of words"""
     word_pattern = re.compile("(?:[a-zA-Z]+[-–’'`ʼ]?)*[a-zA-Z]+[’'`ʼ]?")
     words = word_pattern.findall(sentence)
-
     porter_stemmer = PorterStemmer()
     stems = [porter_stemmer.stem(word) for word in words]
     stem_sentence = ' '.join(stems)
     return stem_sentence
-
-
-def get_lemmas(sentence):
-    wordnet_lemmatizer = WordNetLemmatizer()
-    word_pattern = re.compile("(?:[a-zA-Z]+[-–’'`ʼ]?)*[a-zA-Z]+[’'`ʼ]?")
-    words = word_pattern.findall(sentence)
-    lemmas = [wordnet_lemmatizer.lemmatize(word) for word in words]
-    return lemmas
 
 
 def generate_path(path):
@@ -170,7 +159,6 @@ def get_sentences(data):
 
     elif type(data) is list:
         for sentence in data:
-            # Default NLTK sentence tokenizer
             sentences = [{'text': data[i]} for i, text in enumerate(data)]
 
     elif type(data) is str:

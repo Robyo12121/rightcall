@@ -1,21 +1,15 @@
+#!/usr/bin/env python3
 import json
 import boto3
 import os
 import logging
 import sys
 
-try:
+if os.environ.get("AWS_EXECUTION_ENV") is not None:
     import text
     import comprehend
     import transcribe
     import promotion
-
-
-except Exception as e:
-    from . import text
-    from . import comprehend
-    from . import transcribe
-    from . import promotion
 
 if os.environ.get("AWS_EXECUTION_ENV") is not None:
     TRANSCRIPTS = os.environ.get('TRANSCRIPTS')

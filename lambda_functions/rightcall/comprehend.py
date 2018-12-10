@@ -1,12 +1,13 @@
+#!/usr/bin/env python3
 import boto3
 from sys import getsizeof
 import logging
 import os
 
-try:
+if os.environ.get("AWS_EXECUTION_ENV") is not None:
     import text as text_processing
-except Exception:
-    from . import text as text_processing
+##except Exception:
+##    from . import text as text_processing
     
 
 try:
