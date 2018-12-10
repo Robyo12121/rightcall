@@ -4,23 +4,29 @@ import os
 import logging
 import sys
 
-if os.environ.get("AWS_EXECUTION_ENV") is not None:
+try:
     import text
     import comprehend
     import transcribe
     import promotion
-    TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
-    MP3S = os.environ.get('MP3S')
-    COMPREHEND = os.environ.get('COMPREHEND')
-else:
+
+
+except Exception as e:
     from . import text
     from . import comprehend
     from . import transcribe
     from . import promotion
+
+if os.environ.get("AWS_EXECUTION_ENV") is not None:
+    TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
+    MP3S = os.environ.get('MP3S')
+    COMPREHEND = os.environ.get('COMPREHEND')
+else:
     TRANSCRIPTS = 'transcribe.rightcall'
     MP3S = 'mp3.rightcall'
     COMPREHEND = 'comprehend.rightcall'
-    print(MP3S, TRANSCRIPTS, COMPREHEND)
+
+print(MP3S, TRANSCRIPTS, COMPREHEND)
 
     
 # Logging
@@ -141,8 +147,6 @@ def Comprehend(event):
     # Check promotion
     results = promotion.document_similarity(transcript_text)
     r['promotion'] = results['Promo']
-    r['promotion_keywords'] = list(results['password_triggers']) + list(results['agent_triggers'])
-    r['promotion_score'] = results['agent_promoted_score']
     logger.debug("r promo: {}".format(str(r['promotion'])))
     # Save to json file in 'comprehend.rightcall' bucket
     logger.debug(f"Finished creating record")

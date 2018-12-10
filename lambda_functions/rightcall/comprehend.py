@@ -3,11 +3,15 @@ from sys import getsizeof
 import logging
 import os
 
-if os.environ.get("AWS_EXECUTION_ENV") is not None:
-    COMPREHEND_SIZE_LIMIT = int(os.environ.get('COMPREHEND_SIZE_LIMIT'))
+try:
     import text as text_processing
-else:
+except Exception:
     from . import text as text_processing
+    
+
+try:
+    COMPREHEND_SIZE_LIMIT = int(os.environ.get('COMPREHEND_SIZE_LIMIT'))
+except Exception as e:
     COMPREHEND_SIZE_LIMIT = 4974
 
 logger = logging.getLogger(__name__)
