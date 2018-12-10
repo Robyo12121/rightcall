@@ -8,6 +8,7 @@ if os.environ.get("AWS_EXECUTION_ENV") is not None:
     import text
     import comprehend
     import transcribe
+    import promotion
     TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
     MP3S = os.environ.get('MP3S')
     COMPREHEND = os.environ.get('COMPREHEND')
@@ -15,14 +16,13 @@ else:
     from . import text
     from . import comprehend
     from . import transcribe
+    from . import promotion
     TRANSCRIPTS = 'transcribe.rightcall'
     MP3S = 'mp3.rightcall'
     COMPREHEND = 'comprehend.rightcall'
     print(MP3S, TRANSCRIPTS, COMPREHEND)
 
     
-
-
 # Logging
 logging.basicConfig()
 logger = logging.getLogger()
@@ -34,7 +34,6 @@ else:
 
 class ThrottlingException(Exception):
     pass
-
 
 
 def Transcribe(event):
@@ -140,7 +139,7 @@ def Comprehend(event):
     r['keyPhrases'] = comprehend.get_key_phrases(transcript_text)
     logger.debug(f"Text: {r['keyPhrases']}")
     # Check promotion
-    results = text.check_promotion_score(transcript_text)
+    results = promotion.document_similarity(transcript_text)
     r['promotion'] = results['Promo']
     r['promotion_keywords'] = list(results['password_triggers']) + list(results['agent_triggers'])
     r['promotion_score'] = results['agent_promoted_score']

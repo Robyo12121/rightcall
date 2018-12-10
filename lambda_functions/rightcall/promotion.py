@@ -9,12 +9,13 @@ from nltk import PorterStemmer, WordNetLemmatizer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
-sys.path.append('../')
-from lambda_functions.rightcall.text import tokanize_aws_transcript
+import text import tokanize_aws_transcript
 
 
 # Logging
 LOGLEVEL = 'DEBUG'
+
+
 
 
 def setupLogging(LOGLEVEL):
@@ -246,6 +247,22 @@ def document_similarity(document, keywords_string, threshold=0.4):
         return True
     else:
         return False
+
+
+def lambda_entrypoint(transcript_text):
+    # SETUP
+    smaller_promo_words = ['technology', 'tool', 'virtual-assistant',
+                           'new-tool', 'ask-chat', 'chat', 'chat-with-us', 'pink-button']
+
+    promo_sent = ' '.join(smaller_promo_words)
+    SIMILARITY_THRESHOLD = 0.4
+    promotion = document_similarity(data, promo_sent, SIMILARITY_THRESHOLD)
+    results = {}
+    if promotion:
+        results['Promo'] = 'success'
+    else:
+        results['Promo'] = 'fail'
+    return promotion
 
 
 if __name__ == '__main__':
