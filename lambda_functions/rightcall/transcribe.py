@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 from os.path import basename
-# import os
 import boto3
 import logging
-
+from id_gen import id_generator
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,9 @@ def transcribe_mp3(src, dst, job_name=None, language_code='en-US'):
     logger.info("Transcribing mp3...")
     transcribe = boto3.client('transcribe')
     if not job_name:
+        logger.debug("Generating Id...")
+        job_name = '--'.join(
+            [basename(src).replace('.mp3', ''), id_generator()])
         job_name = basename(src).replace('.mp3', '')
         logger.debug(f"Job Name: {job_name}")
 
