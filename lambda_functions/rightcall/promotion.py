@@ -4,15 +4,14 @@ import logging
 from math import sqrt
 import os
 import json
+from text import tokanize_aws_transcript
 import nltk
 from nltk import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from text import tokanize_aws_transcript
 
 if os.environ.get("AWS_EXECUTION_ENV") is not None:
-    pass
-##    nltk.data.path.append("/nltk_data")
+    nltk.data.path.append("/nltk_data")
     
 
 def setupLogging(LOGLEVEL):
@@ -73,18 +72,7 @@ def generate_path(path):
                 except Exception as err:
                     logger.error(str(err))
                     raise err
-
-
-##def bagofwords(sentence_words, vocab):
-##    """Given tokenized, words and a vocab
-##    Checks if those words occur in vocab
-##    Returns term frequency array"""
-##    bag = np.zeros(len(vocab))
-##    for sw in sentence_words:
-##        for i, word in enumerate(vocab):
-##            if word == sw:
-##                bag[i] += 1
-##    return np.array(bag)
+                
 
 def bagofwords(sentence_words, vocab):
     """Given tokenized, words and a vocab
@@ -125,11 +113,6 @@ def normalize_tf(tf_vector):
     normalized_vector = [x / square_root for x in tf_vector]
     return normalized_vector
 
-
-##def calculate_cosine_similarity(norm_vec_a, norm_vec_b):
-##    """Just dot product if vectors are normalized"""
-##    cosine_similarity = np.dot(norm_vec_a, norm_vec_b)
-##    return cosine_similarity
 
 def dot_prod(a, b):
     return sum([a[i]*b[i] for i in range(len(b))])
