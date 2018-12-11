@@ -2,10 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import re
-import logging
+# import logging
 import os
 import json
-
 
 
 def clean(input_list, exclude_list=[]):
@@ -16,22 +15,22 @@ def clean(input_list, exclude_list=[]):
             exclude_list -- List of strings containing words to be removed
         Output:
             output_list -- List of key phrases with words from exclude_list removed
-            
-        
+
+
     """
     nums = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'
-                'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen'
-                'eighteen', 'nineteen', 'twenty', 'thirty', 'fourty', 'fifty', 'sixty',
-                'seventy', 'eighty', 'ninty', 'hundred']
+            'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen'
+            'eighteen', 'nineteen', 'twenty', 'thirty', 'fourty', 'fifty', 'sixty',
+            'seventy', 'eighty', 'ninty', 'hundred']
     stopwords = ['mhm', 'yeah', 'um', 'ah', 'a', 'the', 'o.k.', 'your', 'hm', 'oh'
-               'okay', 'my', 'that', 'i', 'alright', 'bye', 'uh', 'i i', 'oh']
+                 'okay', 'my', 'that', 'i', 'alright', 'bye', 'uh', 'i i', 'oh']
     if not exclude_list:
         exclude_list = nums + stopwords
     output_list = []
     for phrase in input_list[:]:
         split_phrase = phrase.split(' ')
         for word in split_phrase[:]:
-            if word.lower() in exclude_list or word.isdigit(): 
+            if word.lower() in exclude_list or word.isdigit():
                 split_phrase.remove(word)
         new_phrase = ' '.join(split_phrase)
         if new_phrase is '':
@@ -39,6 +38,7 @@ def clean(input_list, exclude_list=[]):
         else:
             output_list.append(new_phrase.lower())
     return output_list
+
 
 def check_promo(text):
     """Inspects text and returns an inference of the promotion
@@ -50,17 +50,17 @@ def check_promo(text):
 
     """
     promo = 'none'
-    password_problem_phrases = ['reset password', 'new-password','locked-me-out','password reset',
-                     'forgot password', 'forgot my password', 'currently-locked-out', 'password-expired']
+    password_problem_phrases = ['reset password', 'new-password', 'locked-me-out', 'password reset',
+                                'forgot password', 'forgot my password', 'currently-locked-out', 'password-expired']
     password_problem_words = ['password', 'pass', 'parole', 'reset', 'locked', 'expired']
-    
+
     promo_phrases = ['virtual assistant', 'virtual agent', 'virtual-assistant', 'vehicle assistance',
                      'new-tool', 'ask-chat', 'ask chat']
     promo_words = ['virtual', 'assistant', 'agent', 'chat']
 
     word_pattern = re.compile("(?:[a-zA-Z]+[-–’'`ʼ]?)*[a-zA-Z]+[’'`ʼ]?")
     words = word_pattern.findall(text)
-    
+
     for item in password_problem_phrases:
         if item in text:
             promo = 'fail'
@@ -84,6 +84,7 @@ def check_promo(text):
     results['Promo'] = promo
     return results
 
+
 def check_promotion_score(text):
     """Inspects text and returns an inference of the promotion
     ('success', 'none', 'fail').
@@ -106,17 +107,15 @@ def check_promotion_score(text):
     PASSWORD_THRESHOLD = 10
     PROMO_THRESHOLD = 15
 
-    
-
-    password_problem_phrases = ['reset password', 'new-password','locked-me-out','password-reset',
-                     'forgot password', 'forgot-my-password', 'currently-locked-out', 'password-expired',
-                     'change-your-password', 'temporary-one']
+    password_problem_phrases = ['reset password', 'new-password', 'locked-me-out', 'password-reset',
+                                'forgot password', 'forgot-my-password', 'currently-locked-out', 'password-expired',
+                                'change-your-password', 'temporary-one']
     password_problem_words = ['password', 'pass', 'parole', 'reset', 'locked', 'expired',
                               'temporary', 'forgot']
-    
+
     promo_phrases = ['virtual assistant', 'virtual agent', 'virtual-assistant',
                      'new-tool', 'ask-chat', 'ask chat', 'ask-i', 'ask-it', 'chat-with-us']
-    
+
     promo_words = ['virtual', 'assistant', 'agent', 'chat', 'technology', 'service-now', 'tool',
                    'vehicle', 'assistance']
 
@@ -125,12 +124,12 @@ def check_promotion_score(text):
     words = [x.lower() for x in words]
     results['password_triggers'] = []
     results['agent_triggers'] = []
-    
+
     for item in password_problem_phrases:
         if item in text:
             results['password_triggers'].append(item)
             results['password_error_score'] += PHRASE_AMOUNT * PHRASE_MULTIPLIER
-            
+
     for item in password_problem_words:
         if item in words:
             results['password_triggers'].append(item)
@@ -140,7 +139,7 @@ def check_promotion_score(text):
         if item in text:
             results['agent_triggers'].append(item)
             results['agent_promoted_score'] += PHRASE_AMOUNT * PHRASE_MULTIPLIER
-            
+
     for item in promo_words:
         if item in words:
             results['agent_triggers'].append(item)
@@ -164,12 +163,12 @@ def tokanize_aws_transcript(transcribe_data):
                     'items': [{'start_time': }]
                     'speaker_labels': {
                         'segments': []
-                        
+
     Output: """
-    transcript = transcribe_data['results']['transcripts'][0]
+    # transcript = transcribe_data['results']['transcripts'][0]
     items = transcribe_data['results']['items']
     contents = ""
-    timedata = []
+    # timedata = []
 
     prevEndTime = -1
     paragraphGap = 1.5
@@ -187,7 +186,6 @@ def tokanize_aws_transcript(transcribe_data):
             speakerMapping.append({"speakerLabel": speakerLabel['speaker_label'],
                                    "endTime": float(speakerLabel['end_time'])})
 
-
     speakerIndex = 0
 
     retval = []
@@ -202,7 +200,7 @@ def tokanize_aws_transcript(transcribe_data):
         if items[i]['type'] == 'punctuation':
             if items[i]["alternatives"][0]["content"] == '.':
                 newParagraph = True
-                
+
             contents += items[i]["alternatives"][0]["content"]
 
         # Add the start time to the string -> timedata
@@ -212,7 +210,6 @@ def tokanize_aws_transcript(transcribe_data):
             if prevStartTime == -1:
                 prevStartTime = float(items[i]["start_time"])
 
-                
             # gap refers to the amount of time between spoken words
             gap = float(items[i]["start_time"]) - prevEndTime
 
@@ -255,7 +252,7 @@ def tokanize_aws_transcript(transcribe_data):
                 # Reset the contents and the time mapping
                 # print('paragraph:' + contents)
                 contents = ""
-                timedata = []
+                # timedata = []
                 prevEndTime = -1
                 prevStartTime = -1
                 newParagraph = False
@@ -271,10 +268,10 @@ def tokanize_aws_transcript(transcribe_data):
             # Always assume the first guess is right.
             word = items[i]["alternatives"][0]["content"]
 
-
             contents += word
 
     return retval
+
 
 def generate_path(path):
     """Generate open file path for each file in
@@ -294,7 +291,7 @@ def generate_path(path):
                         data = json.load(file)
                         yield data
                 except Exception as err:
-                    raise err 
+                    raise err
 
 
 if __name__ == '__main__':
@@ -309,12 +306,3 @@ if __name__ == '__main__':
             total_promos += 1
         total_docs += 1
     print(f"Total Promotions: {total_promos} out of {total_docs} files")
-
-
-    
-
-
-    
-    
-
-

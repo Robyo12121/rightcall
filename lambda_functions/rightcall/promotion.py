@@ -1,24 +1,19 @@
 #!/usr/bin/env python3
 import re
 import logging
-import numpy as np
 from math import sqrt
-import sys
 import os
 import json
 import nltk
 from nltk import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from text import tokanize_aws_transcript
 
 if os.environ.get("AWS_EXECUTION_ENV") is not None:
-    nltk.data.path.append("/nltk_data")
-    from text import tokanize_aws_transcript
-
-
-
-
-
+    pass
+##    nltk.data.path.append("/nltk_data")
+    
 
 def setupLogging(LOGLEVEL):
     levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
@@ -80,18 +75,29 @@ def generate_path(path):
                     raise err
 
 
+##def bagofwords(sentence_words, vocab):
+##    """Given tokenized, words and a vocab
+##    Checks if those words occur in vocab
+##    Returns term frequency array"""
+##    bag = np.zeros(len(vocab))
+##    for sw in sentence_words:
+##        for i, word in enumerate(vocab):
+##            if word == sw:
+##                bag[i] += 1
+##    return np.array(bag)
+
 def bagofwords(sentence_words, vocab):
     """Given tokenized, words and a vocab
     Checks if those words occur in vocab
     Returns term frequency array"""
-    bag = np.zeros(len(vocab))
+    bag = [0] * len(vocab)
     for sw in sentence_words:
         for i, word in enumerate(vocab):
             if word == sw:
                 bag[i] += 1
-    return np.array(bag)
+    return bag
 
-
+                
 def preprocess(raw_sentence):
     """Do all preprocessing of text:
         Tokenize words
@@ -120,10 +126,13 @@ def normalize_tf(tf_vector):
     return normalized_vector
 
 
-def calculate_cosine_similarity(norm_vec_a, norm_vec_b):
-    """Just dot product if vectors are normalized"""
-    cosine_similarity = np.dot(norm_vec_a, norm_vec_b)
-    return cosine_similarity
+##def calculate_cosine_similarity(norm_vec_a, norm_vec_b):
+##    """Just dot product if vectors are normalized"""
+##    cosine_similarity = np.dot(norm_vec_a, norm_vec_b)
+##    return cosine_similarity
+
+def dot_prod(a, b):
+    return sum([a[i]*b[i] for i in range(len(b))])
 
 
 def construct_vocab(words1, words2):
@@ -186,7 +195,7 @@ def sentence_similarity(sentence, keywords):
     tf_words1_norm = normalize_tf(tf_words1)
     tf_words2_norm = normalize_tf(tf_words2)
     # Calculate Cosine Similarity between two vectors
-    similarity = calculate_cosine_similarity(tf_words1_norm, tf_words2_norm)
+    similarity = dot_prod(tf_words1_norm, tf_words2_norm)
     return similarity
 
 
@@ -204,13 +213,12 @@ def count_hits_in_sentence(sentence, keywords_string):
 
 def document_similarity(document, keywords_string, threshold=0.4):
 
-##    logger = logging.getLogger()
+    # logger = logging.getLogger()
     sentences = get_sentences(document)
     similarity_sum = 0
     VA_BOOST = threshold
     COUNT_BOOST = 0.2
     num_sentence_hits = 0
-    unique_word_hit_count = 0
     virtual_assistant_hit = False
     unique_word_hits = set()
 
@@ -246,7 +254,7 @@ def document_similarity(document, keywords_string, threshold=0.4):
 
 
 def Promotion(transcript_text):
-    LOGLEVEL = 'DEBUG'
+    # LOGLEVEL = 'DEBUG'
     smaller_promo_words = ['technology', 'tool', 'virtual-assistant',
                            'new-tool', 'ask-chat', 'chat', 'chat-with-us', 'pink-button']
 
@@ -263,16 +271,16 @@ def Promotion(transcript_text):
 
 if __name__ == '__main__':
     logger = setupLogging('DEBUG')
-    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/test/'
+    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/'
 
-##    promo_words = ['virtual', 'chat', 'technology', 'tool',
-##                   'vehicle', 'virtual agent', 'virtual-assistant',
-##                     'new-tool', 'ask-chat', 'chat', 'chat-with-us',
-##                   'pink-button', 'ask-I.T.']
+    # promo_words = ['virtual', 'chat', 'technology', 'tool',
+    #                   'vehicle', 'virtual agent', 'virtual-assistant',
+    #                     'new-tool', 'ask-chat', 'chat', 'chat-with-us',
+    #                   'pink-button', 'ask-I.T.']
 
-##    # Keep this intact - do not modify
+    # Keep this intact - do not modify
     promo_words = ['technology', 'tool', 'virtual-assistant',
-                           'new-tool', 'ask-chat', 'chat', 'chat-with-us', 'pink-button']
+                   'new-tool', 'ask-chat', 'chat', 'chat-with-us', 'pink-button']
 
     promo_sent = ' '.join(promo_words)
     SIMILARITY_THRESHOLD = 0.4

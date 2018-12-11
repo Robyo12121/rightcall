@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 from os.path import basename
-import os
+# import os
 import boto3
 import logging
 
 
 logger = logging.getLogger(__name__)
+
 
 def transcribe_mp3(src, dst, job_name=None, language_code='en-US'):
     """Transcribe mp3 file with AWS Transcribe.

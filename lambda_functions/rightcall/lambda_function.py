@@ -6,7 +6,7 @@ import logging
 import sys
 
 if os.environ.get("AWS_EXECUTION_ENV") is not None:
-    import text
+    # import text
     import comprehend
     import transcribe
     import promotion
@@ -22,7 +22,6 @@ else:
 
 print(MP3S, TRANSCRIPTS, COMPREHEND)
 
-    
 # Logging
 logging.basicConfig()
 logger = logging.getLogger()
@@ -148,7 +147,7 @@ def Comprehend(event):
     try:
         response = s3.put_object(Body=json.dumps(r, indent=2),
                                  Bucket=COMPREHEND,
-                                 Key=event['detail']['TranscriptionJobName'] 
+                                 Key=event['detail']['TranscriptionJobName']
                                  + '.json')
     except Exception as e:
         logger.error(str(e))

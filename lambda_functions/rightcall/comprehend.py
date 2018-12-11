@@ -6,13 +6,12 @@ import os
 
 if os.environ.get("AWS_EXECUTION_ENV") is not None:
     import text as text_processing
-##except Exception:
-##    from . import text as text_processing
-    
+# except Exception:
+#    from . import text as text_processing
 
 try:
     COMPREHEND_SIZE_LIMIT = int(os.environ.get('COMPREHEND_SIZE_LIMIT'))
-except Exception as e:
+except Exception:
     COMPREHEND_SIZE_LIMIT = 4974
 
 logger = logging.getLogger(__name__)
@@ -162,7 +161,9 @@ def get_entities(text, language_code='en'):
         except Exception as e:
             logger.error(str(e))
             raise e
-    return list(set(x['Text'] for x in entities if x['Type'] not in ['PERSON', 'QUANTITY', 'DATE', 'LOCATION']))
+    return list(set(x['Text'] for x in entities
+                    if x['Type'] not in
+                    ['PERSON', 'QUANTITY', 'DATE', 'LOCATION']))
 
 
 def get_key_phrases(text, language_code='en'):
@@ -189,7 +190,7 @@ def get_key_phrases(text, language_code='en'):
         except Exception as e:
             logger.error(str(e))
             raise e
-        
+
     return text_processing.clean(list(set(x['Text'] for x in kps)))
 
 # Example. Get sentiment of text below:
@@ -202,6 +203,3 @@ def get_key_phrases(text, language_code='en'):
 #        lighter brown than pictured but fairly close. Would be ten times \
 #        better if it was lined with cotton or wool on the inside."
 # get_sentiment(text)
-
-
-    
