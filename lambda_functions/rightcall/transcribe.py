@@ -20,13 +20,13 @@ def transcribe_mp3(src, dst, job_name=None, language_code='en-US'):
                          file (not required | type: str | default: 'en-US').
 
     """
+    logger.debug(f"Called with source: {src}, destination: {dst}, JobName: {job_name}, Language: {language_code}")
     logger.info("Transcribing mp3...")
     transcribe = boto3.client('transcribe')
     if not job_name:
         logger.debug("Generating Id...")
         job_name = '--'.join(
             [basename(src).replace('.mp3', ''), id_generator()])
-        job_name = basename(src).replace('.mp3', '')
         logger.debug(f"Job Name: {job_name}")
 
     try:
@@ -41,3 +41,19 @@ def transcribe_mp3(src, dst, job_name=None, language_code='en-US'):
     except Exception as exception:
         raise exception
     return response
+
+if __name__ == '__main__':
+    LOGLEVEL = 'DEBUG'
+    logger.setLevel(LOGLEVEL)
+    # create console handler and set level to LOGLEVEL
+    ch = logging.StreamHandler()
+    ch.setLevel(LOGLEVEL)
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+    # add formatter to ch
+    ch.setFormatter(formatter)
+    # add ch to logger
+    logger.addHandler(ch)
+    path = 'https://s3-eu-west-1.amazonaws.com/mp3.rightcall/jobs/f6067dTVd00659.mp3'
+    dst = 'transcribe.rightcall'
+    resp = transcribe_mp3(path, dst)
