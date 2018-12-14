@@ -32,8 +32,5 @@ records_list = json.loads(file.to_json(orient='records'))
 
 for record in records_list:
     response = dynamodb_tools.put_call(record, table)
-    
-
 
 odigo_robin.download_mp3_by_csv(s, username, passwd, path_to_file, rightcall_data + 'mp3s/')
-

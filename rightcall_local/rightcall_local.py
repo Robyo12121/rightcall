@@ -2,9 +2,11 @@
 import click
 from comprehend_to_elasticsearch import Comp2Elas
 
+
 @click.group()
 def rightcall_local():
     pass
+
 
 @rightcall_local.group()
 @click.option('--debug/--no-debug', default=False)
@@ -17,29 +19,29 @@ def elasticsearch(ctx, debug):
                             loglevel='DEBUG')
     else:
         ctx.obj = Comp2Elas('eu-west-1', 'http://localhost:8000', 'comprehend.rightcall',
-                    'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/',
-                    'http://localhost:9200')
+                            'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/',
+                            'http://localhost:9200')
     click.echo(f"Debug mode is {'on' if debug else 'off'}")
 
+
 @elasticsearch.command()
-@click.option('-s','--source', 'source', default=None, type=str, help='Source of data')
+@click.option('-s', '--source', 'source', default=None, type=str, help='Source of data')
 @click.pass_obj
 def add(comp2elas, source):
-    click.echo(f"{source}")
-    click.echo(f"Getting files from: {source}")
-    click.echo(f"Type: {type(source)}")
+    click.echo(f'{source}')
+    click.echo(f'Getting files from: {source}')
+    click.echo(f'Type: {type(source)}')
     unknown_refs = comp2elas.add_new_or_incomplete_items(source)
-    click.echo(unknown_refs)   
+    click.echo(unknown_refs)
+
 
 @elasticsearch.command()
-@click.option('-s','--source', 'source', default=None, type=str, help='Source of data')
+@click.option('-s', '--source', 'source', default=None, type=str, help='Source of data')
 @click.pass_obj
 def update(comp2elas, source):
-    click.echo(f"Getting files from: {source}")
+    click.echo(f'Getting files from: {source}')
     unknown_refs = comp2elas.update_existing_items(source)
     click.echo(unknown_refs)
-    
-
 
 
 if __name__ == '__main__':

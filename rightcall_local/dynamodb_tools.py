@@ -74,6 +74,24 @@ def get_db_item(reference_number, table, check_exists=False):
             return False
 
 
+def check_exists(reference_number, table):
+    if '.json' in reference_number:
+        raise ValueError('reference_number is wrong format: contains ".json"')
+    try:
+        response = table.get_item(Key={
+            'referenceNumber': reference_number})
+
+    except ClientError as e:
+            print(e.response['Error']['Message'])
+    else:
+        try:
+            response['Item']
+            return True
+        except KeyError:
+            print("Item not in db")
+            return False
+
+
 if __name__ == '__main__':
     # item = get_db_item('b76993TOd10547', table)
     # print(item)

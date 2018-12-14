@@ -23,6 +23,7 @@ print(sys.version)
 driver = r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe'
 
 
+
 def change_date_format(date):
     try:
         correct_string = date.strptime(str(date.date()), '%Y-%m-%d').strftime('%m-%d-%Y')
