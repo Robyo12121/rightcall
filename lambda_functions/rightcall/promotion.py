@@ -10,30 +10,28 @@ from nltk import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
-if os.environ.get("AWS_EXECUTION_ENV") is not None:
-    nltk.data.path.append("/nltk_data")
-    
+if os.environ.get('AWS_EXECUTION_ENV') is not None:
+    nltk.data.path.append('/nltk_data')
 
-def setupLogging(LOGLEVEL):
+
+def setupLogging(LOGLEVEL, lambda_env=False):
     levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
     if LOGLEVEL not in levels:
-        raise ValueError(f"Invalid log level choice {LOGLEVEL}")
+        raise ValueError(f'Invalid log level choice {LOGLEVEL}')
     logger = logging.getLogger(__name__)
     logger.setLevel(LOGLEVEL)
-    # create console handler and set level to LOGLEVEL
     ch = logging.StreamHandler()
     ch.setLevel(LOGLEVEL)
-    # create file handler and set level to DEBUG
-    fh = logging.FileHandler(__file__.split('.')[0] + '.log')
-    fh.setLevel(logging.DEBUG)
-    # create formatter
     formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
-    # add formatter to ch
     ch.setFormatter(formatter)
-    fh.setFormatter(formatter)
-    # add ch to logger
     logger.addHandler(ch)
-    logger.addHandler(fh)
+
+    if not lambda_env:
+        fh = logging.FileHandler(__file__.split('.')[0] + '.log')
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+
     return logger
 
 
@@ -72,7 +70,7 @@ def generate_path(path):
                 except Exception as err:
                     logger.error(str(err))
                     raise err
-                
+
 
 def bagofwords(sentence_words, vocab):
     """Given tokenized, words and a vocab
@@ -85,7 +83,7 @@ def bagofwords(sentence_words, vocab):
                 bag[i] += 1
     return bag
 
-                
+
 def preprocess(raw_sentence):
     """Do all preprocessing of text:
         Tokenize words
@@ -157,7 +155,7 @@ def get_sentences(data):
         sentences.append({'text': data})
 
     else:
-        logger.error("TypeError")
+        logger.error('TypeError')
         return False
     return sentences
 
@@ -196,7 +194,7 @@ def count_hits_in_sentence(sentence, keywords_string):
 
 def document_similarity(document, keywords_string, threshold=0.4):
 
-    # logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
     sentences = get_sentences(document)
     similarity_sum = 0
     VA_BOOST = threshold
@@ -210,26 +208,30 @@ def document_similarity(document, keywords_string, threshold=0.4):
         similarity = sentence_similarity(sentence, keywords_string)
         if similarity > 0:
             num_sentence_hits += 1
-            logger.debug(f"Similarity Score: {similarity} -- Sentence: {sentence}")
-            # Summing similarity scores for each sentence to get score for entire document (may reintroduce effect of longer sentences having higher score
-            # that normalizing was supposed to eliminate
+            logger.debug(f'Similarity Score: {similarity} -- Sentence: {sentence}')
+            # Summing similarity scores for each sentence to get score for
+            # entire document (may reintroduce effect of longer sentences
+            # having higher score that normalizing was supposed to eliminate
             similarity_sum += similarity
             if 'virtual-assistant' in sentence and virtual_assistant_hit is False:
                 virtual_assistant_hit = True
-                logger.debug(f"'virtual-assistant' detected. Increasing similarity sum by {VA_BOOST}")
+                logger.debug(f'"virtual-assistant" detected. \
+                                Increasing similarity sum by {VA_BOOST}')
                 similarity_sum += VA_BOOST
 
             count, hits = count_hits_in_sentence(sentence, keywords_string)
             unique_word_hits.update(hits)
 
-    # If low number of sentences hits and no virtual assistant detected, add extra boost
-    # based on number of individual word hits
+    # If low number of sentences hits and no virtual assistant detected,
+    # add extra boost based on number of individual word hits
     if num_sentence_hits <= 3 and virtual_assistant_hit is False:
-        logger.debug("Sentence Hits 2 or less and no virtual_assistant detected")
-        logger.debug(f"Document Unique Word Hit Count: {len(unique_word_hits)} - Words : {unique_word_hits} - Increasing similarity sum by {len(unique_word_hits) * COUNT_BOOST}")
+        logger.debug('Sentence Hits 2 or less and no virtual_assistant detected')
+        logger.debug(f'Document Unique Word Hit Count: {len(unique_word_hits)} - \
+                       Words : {unique_word_hits} - Increasing similarity sum \
+                       by {len(unique_word_hits) * COUNT_BOOST}')
         similarity_sum += len(unique_word_hits) * COUNT_BOOST
 
-    logger.info(f"Similarity Sum for file: {similarity_sum} - Threshold: {threshold}")
+    logger.info(f'Similarity Sum for file: {similarity_sum} - Threshold: {threshold}')
     if similarity_sum > threshold:
         return True
     else:
@@ -237,43 +239,57 @@ def document_similarity(document, keywords_string, threshold=0.4):
 
 
 def Promotion(transcript_text):
+    """Lambda entry point"""
     # LOGLEVEL = 'DEBUG'
+    logger = logging.getLogger(__name__)
     smaller_promo_words = ['technology', 'tool', 'virtual-assistant',
-                           'new-tool', 'ask-chat', 'chat', 'chat-with-us', 'pink-button']
+                           'new-tool', 'ask-chat', 'chat', 'chat-with-us',
+                           'pink-button']
 
     promo_sent = ' '.join(smaller_promo_words)
     SIMILARITY_THRESHOLD = 0.4
-    promotion = document_similarity(transcript_text, promo_sent, SIMILARITY_THRESHOLD)
+    promotion = document_similarity(transcript_text,
+                                    promo_sent,
+                                    SIMILARITY_THRESHOLD)
     results = {}
     if promotion:
         results['Promo'] = 'success'
     else:
         results['Promo'] = 'none'
+    logger.info(f"Promotion: {results['Promo']}")
     return results
 
 
 if __name__ == '__main__':
     logger = setupLogging('DEBUG')
-    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/'
+    transcript = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/b76152TVd00246.json'
+    with open(transcript, 'r') as file:
+        data = json.load(file)
+    promo = Promotion(data)
+    print(promo)
 
-    # promo_words = ['virtual', 'chat', 'technology', 'tool',
-    #                   'vehicle', 'virtual agent', 'virtual-assistant',
-    #                     'new-tool', 'ask-chat', 'chat', 'chat-with-us',
-    #                   'pink-button', 'ask-I.T.']
+    # logger = setupLogging('DEBUG')
+    # base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/'
 
-    # Keep this intact - do not modify
-    promo_words = ['technology', 'tool', 'virtual-assistant',
-                   'new-tool', 'ask-chat', 'chat', 'chat-with-us', 'pink-button']
+    # # promo_words = ['virtual', 'chat', 'technology', 'tool',
+    # #                   'vehicle', 'virtual agent', 'virtual-assistant',
+    # #                     'new-tool', 'ask-chat', 'chat', 'chat-with-us',
+    # #                   'pink-button', 'ask-I.T.']
 
-    promo_sent = ' '.join(promo_words)
-    SIMILARITY_THRESHOLD = 0.4
-    total_promos = 0
-    total_docs = 0
-    for data in generate_path(base_path):
-        print()
-        promotion = document_similarity(data, promo_sent, SIMILARITY_THRESHOLD)
-        logger.info(f"Promotion: {promotion}")
-        if promotion:
-            total_promos += 1
-        total_docs += 1
-    logger.info(f"Total Matches: {total_promos} out of {total_docs} files")
+    # # Keep this intact - do not modify
+    # promo_words = ['technology', 'tool', 'virtual-assistant',
+    #                'new-tool', 'ask-chat', 'chat', 'chat-with-us',
+    #                'pink-button']
+
+    # promo_sent = ' '.join(promo_words)
+    # SIMILARITY_THRESHOLD = 0.4
+    # total_promos = 0
+    # total_docs = 0
+    # for data in generate_path(base_path):
+    #     print()
+    #     promotion = document_similarity(data, promo_sent, SIMILARITY_THRESHOLD)
+    #     logger.info(f'Promotion: {promotion}')
+    #     if promotion:
+    #         total_promos += 1
+    #     total_docs += 1
+    # logger.info(f'Total Matches: {total_promos} out of {total_docs} files')
