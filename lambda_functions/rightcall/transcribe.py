@@ -32,15 +32,16 @@ def transcribe_mp3(src, dst, job_name=None, language_code='en-US'):
     try:
         logger.debug("trying job...")
         response = transcribe.start_transcription_job(
-                TranscriptionJobName=job_name,
-                Media={'MediaFileUri': src},
-                MediaFormat='mp3', LanguageCode=language_code,
-                OutputBucketName=dst,
-                Settings={'ShowSpeakerLabels': True, 'MaxSpeakerLabels': 2,
-                          'VocabularyName': "teva-vocab"})
+            TranscriptionJobName=job_name,
+            Media={'MediaFileUri': src},
+            MediaFormat='mp3', LanguageCode=language_code,
+            OutputBucketName=dst,
+            Settings={'ShowSpeakerLabels': True, 'MaxSpeakerLabels': 2,
+                        'VocabularyName': "teva-vocab"})
     except Exception as exception:
         raise exception
     return response
+
 
 if __name__ == '__main__':
     LOGLEVEL = 'DEBUG'

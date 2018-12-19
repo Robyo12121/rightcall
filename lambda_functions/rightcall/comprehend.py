@@ -42,7 +42,7 @@ def sum_sentiments(ResultList, weights=None):
             logger.debug("Working on {}".format(result))
             for k in sums.keys():
                 sums[k] += result['SentimentScore'][k] * \
-                                    weights[result['Index']]
+                    weights[result['Index']]
 
     return sums
 
@@ -61,11 +61,11 @@ def chunkify(string, chunk_size=4970):
         start = 0
         num = 0
         for i in range(0, len(string), chunk_size):
-            chunks[num] = {'text': string[start:start+chunk_size]}
-            start = start+chunk_size
+            chunks[num] = {'text': string[start:start + chunk_size]}
+            start = start + chunk_size
             num += 1
         for k, v in chunks.items():
-            weights[k] = len(v['text'])/len(string)
+            weights[k] = len(v['text']) / len(string)
         return chunks, weights
 
 
@@ -117,8 +117,8 @@ def get_sentiment(text, language_code='en'):
         chunks, weights = chunkify(text, COMPREHEND_SIZE_LIMIT)
         try:
             r = comprehend.batch_detect_sentiment(
-                            TextList=[val['text'] for val in chunks.values()],
-                            LanguageCode=language_code)
+                TextList=[val['text'] for val in chunks.values()],
+                LanguageCode=language_code)
             logger.debug("Result List: {}".format(r['ResultList']))
         except Exception as e:
             logger.error(str(e))
@@ -146,8 +146,8 @@ def get_entities(text, language_code='en'):
         chunks, weights = chunkify(text, COMPREHEND_SIZE_LIMIT)
         try:
             r = comprehend.batch_detect_entities(
-                        TextList=[val['text'] for val in chunks.values()],
-                        LanguageCode=language_code)
+                TextList=[val['text'] for val in chunks.values()],
+                LanguageCode=language_code)
             for ent_list in r['ResultList']:
                 entities = entities + ent_list['Entities']
 
@@ -174,8 +174,8 @@ def get_key_phrases(text, language_code='en'):
         chunks, weights = chunkify(text, COMPREHEND_SIZE_LIMIT)
         try:
             r = comprehend.batch_detect_key_phrases(
-                        TextList=[val['text'] for val in chunks.values()],
-                        LanguageCode=language_code)
+                TextList=[val['text'] for val in chunks.values()],
+                LanguageCode=language_code)
             kps = []
             for kp_list in r['ResultList']:
                 kps = kps + kp_list['KeyPhrases']

@@ -146,8 +146,7 @@ def Comprehend(event):
     try:
         response = s3.put_object(Body=json.dumps(comp_obj, indent=2),
                                  Bucket=COMPREHEND,
-                                 Key=event['detail']['TranscriptionJobName']
-                                 + '.json')
+                                 Key=event['detail']['TranscriptionJobName'] + '.json')
     except Exception as e:
         logger.error(str(e))
         raise e
@@ -212,57 +211,53 @@ def lambda_handler(event, context):
 
 if __name__ == '__main__':
     transcribe_job_status_event = {
-       'version': '0',
-       'id': 'event ID',
-       'detail-type': 'Transcribe Job State Change',
-       'source': 'aws.transcribe',
-       'account': 'account ID',
-       'time': 'timestamp',
-       'region': 'region',
-       'resources': [],
-       'detail': {
-         'TranscriptionJobName': 'b76152TVd00246--3bc99ed9-e035-4316-9a05',
-         'TranscriptionJobStatus': 'COMPLETE'
-       }
-     }
+        'version': '0',
+        'id': 'event ID',
+        'detail-type': 'Transcribe Job State Change',
+        'source': 'aws.transcribe',
+        'account': 'account ID',
+        'time': 'timestamp',
+        'region': 'region',
+        'resources': [],
+        'detail': {
+            'TranscriptionJobName': 'b76152TVd00246--3bc99ed9-e035-4316-9a05',
+            'TranscriptionJobStatus': 'COMPLETE'}
+    }
     s3_new_object_event = {
-               'Records': [
-                  {
-                     'eventVersion': '2.0',
-                     'eventSource': 'aws:s3',
-                     'awsRegion': 'eu-west-1',
-                     'eventTime': '1970-01-01T00:00:00.000Z',
-                     'eventName': 'ObjectCreated:Put',
-                     'userIdentity': {
-                        'principalId': 'AIDAJDPLRKLG7UEXAMPLE'
-                     },
-                     'requestParameters': {
-                        'sourceIPAddress': '127.0.0.1'
-                     },
-                     'responseElements': {
-                        'x-amz-request-id': 'C3D13FE58DE4C810',
-                     },
-                     's3': {
-                        's3SchemaVersion': '1.0',
-                        'configurationId': 'testConfigRule',
-                        'bucket': {
-                           'name': 'mp3.rightcall',
-                           'ownerIdentity': {
-                              'principalId': 'A3NL1KOZZKExample'
-                           },
-                           'arn': 'arn:aws:s3:::mp3.rightcall'
+        'Records': [
+            {
+                'eventVersion': '2.0',
+                'eventSource': 'aws:s3',
+                'awsRegion': 'eu-west-1',
+                'eventTime': '1970-01-01T00:00:00.000Z',
+                'eventName': 'ObjectCreated:Put',
+                'userIdentity': {
+                    'principalId': 'AIDAJDPLRKLG7UEXAMPLE'},
+                'requestParameters': {
+                    'sourceIPAddress': '127.0.0.1'},
+                'responseElements': {
+                    'x-amz-request-id': 'C3D13FE58DE4C810',
+                },
+                's3': {
+                    's3SchemaVersion': '1.0',
+                    'configurationId': 'testConfigRule',
+                    'bucket': {
+                        'name': 'mp3.rightcall',
+                        'ownerIdentity': {
+                            'principalId': 'A3NL1KOZZKExample'
                         },
-                        'object': {
-                           'key': 'jobs/bda5cbTVd10162.mp3',
-                           'size': 1024,
-                           'eTag': 'd41d8cd98f00b204e9800998ecf8427e',
-                           'versionId': '096fKKXTRTtl3on89fVO.nfljtsv6qko',
-                           'sequencer': '0055AED6DCD90281E5'
-                        }
-                     }
-                  }
-               ]
+                        'arn': 'arn:aws:s3:::mp3.rightcall'
+                    },
+                    'object': {
+                        'key': 'jobs/bda5cbTVd10162.mp3',
+                        'size': 1024,
+                        'eTag': 'd41d8cd98f00b204e9800998ecf8427e',
+                        'versionId': '096fKKXTRTtl3on89fVO.nfljtsv6qko',
+                        'sequencer': '0055AED6DCD90281E5'}
+                }
             }
+        ]
+    }
     sqs_test_event = {
         'Records': [
             {
@@ -273,8 +268,7 @@ if __name__ == '__main__':
                     'ApproximateReceiveCount': '137',
                     'SentTimestamp': '1540462870055',
                     'SenderId': 'AIDAJVEO32BJMF27H2JKW',
-                    'ApproximateFirstReceiveTimestamp': '1540462870055'
-                        },
+                    'ApproximateFirstReceiveTimestamp': '1540462870055'},
                 'messageAttributes': {},
                 'md5OfBody': '802614776f1fdea805f34291a274c685',
                 'eventSource': 'aws:sqs',
@@ -284,25 +278,24 @@ if __name__ == '__main__':
         ]
     }
     sqs_event = {
-            'Records': [
-             {
+        'Records': [
+            {
                 'messageId': '1b498e27-3a64-4847-89bd-e5026604b212',
                 'receiptHandle': 'AQEBJuUjL8Q2Z93UOS03uX/ynEUWt35ySRWqgFltcsiyv3bcSqeM+HdQc/aoNzIYHf3Z5gCtMpXRZ3EFo2Z/jCJHQAX5e8lH/Wot8VvZ3iBUzVL/GgV5Sg5mU/i+XrtDvuprzE2uvrDYMIAuzUfzoYUBJyPBn6uZRed/0gfK7XhXSeiBhRnMo1Qjjzuguiton6inehUaDUK3Nre+h5+yDDjU/ZBZmFfGi+mfUIJ6+z6n6MbxqC3yF8Oh2zOWF5QavEk9dxVAT/+t1p6wtagvXjT0od1WHZ1U8K9aUzSFePcdA+/hr0SIrpcpO1011/9iJtT837o+AvgONxsg7HEM9oUsAO/nH/erQVn45/q+Kdq57iVKHkzLNM+SJM6CQcHx9UlCdrZoT7IricptnlOGz6MTjQ==',
                 'body': '{\'Records\':[{\'eventVersion\':\'2.0\',\'eventSource\':\'aws:s3\',\'awsRegion\':\'eu-west-1\',\'eventTime\':\'2018-10-26T09:30:14.124Z\',\'eventName\':\'ObjectCreated:Put\',\'userIdentity\':{\'principalId\':\'AWS:AIDAJFUNXNZ3MF2LQLH4O\'},\'requestParameters\':{\'sourceIPAddress\':\'185.31.48.30\'},\'responseElements\':{\'x-amz-request-id\':\'CC8C87308642EBE5\',\'x-amz-id-2\':\'+yybnPTMtJ4vslctD/uUXfeI//dT/4qbCF8c6O5QaSzAbWSsr4fB164HcgbkQT3jol9Ul2kn0g8=\'},\'s3\':{\'s3SchemaVersion\':\'1.0\',\'configurationId\':\'2116bf90-74fc-4c00-a60d-d3c2c5a35132\',\'bucket\':{\'name\':\'mp3.rightcall\',\'ownerIdentity\':{\'principalId\':\'A2VMRRM44J4WYZ\'},\'arn\':\'arn:aws:s3:::mp3.rightcall\'},\'object\':{\'key\':\'jobs/c9c4bfTOd00994.mp3\',\'size\':784656,\'eTag\':\'8c31f6b56802fa76346d04cdcfdeb430\',\'sequencer\':\'005BD2DEA55CFDC057\'}}}]}',
                 'attributes': {
-                   'ApproximateReceiveCount': '1',
-                   'SentTimestamp': '1540546214173',
-                   'SenderId': 'AIDAJVEO32BJMF27H2JKW',
-                   'ApproximateFirstReceiveTimestamp': '1540546214174'
-                   },
+                    'ApproximateReceiveCount': '1',
+                    'SentTimestamp': '1540546214173',
+                    'SenderId': 'AIDAJVEO32BJMF27H2JKW',
+                    'ApproximateFirstReceiveTimestamp': '1540546214174'},
                 'messageAttributes': {},
                 'md5OfBody': '94f778ba57b38e0080a56466c7727f96',
                 'eventSource': 'aws:sqs',
                 'eventSourceARN': 'arn:aws:sqs:eu-west-1:868234285752:RightcallTranscriptionJobs',
                 'awsRegion': 'eu-west-1'
-                }
-            ]
-        }
+            }
+        ]
+    }
     unhandled = {
         'Records': [
             {
@@ -313,15 +306,14 @@ if __name__ == '__main__':
                     'ApproximateReceiveCount': '1',
                     'SentTimestamp': '1540994895388',
                     'SenderId': 'AIDAJVEO32BJMF27H2JKW',
-                    'ApproximateFirstReceiveTimestamp': '1540994895398'
-                    },
+                    'ApproximateFirstReceiveTimestamp': '1540994895398'},
                 'messageAttributes': {},
                 'md5OfBody': '90bca7ebfeff23e8c6e9458ef7a80907',
                 'eventSource': 'aws:sqs',
                 'eventSourceARN': 'arn:aws:sqs:eu-west-1:868234285752:RightcallTranscriptionJobs',
                 'awsRegion': 'eu-west-1'
-                }
-            ]
-        }
+            }
+        ]
+    }
     response = lambda_handler(transcribe_job_status_event, None)
     print(response)

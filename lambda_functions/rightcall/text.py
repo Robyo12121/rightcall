@@ -214,9 +214,7 @@ def tokanize_aws_transcript(transcribe_data):
             gap = float(items[i]["start_time"]) - prevEndTime
 
             if hasSpeakerLabels:
-                while speakerIndex < (len(speakerMapping) - 1) and speakerMapping[speakerIndex + 1]['endTime'] < \
-                      float(items[i]["start_time"]):
-
+                while speakerIndex < (len(speakerMapping) - 1) and speakerMapping[speakerIndex + 1]['endTime'] < float(items[i]["start_time"]):
                     speakerIndex += 1
 
                 speakerLabel = speakerMapping[speakerIndex]['speakerLabel']
@@ -287,7 +285,7 @@ def generate_path(path):
         for item in os.listdir(path):
             if '.json' in item:
                 try:
-                    with open(path+item, 'r') as file:
+                    with open(path + item, 'r') as file:
                         data = json.load(file)
                         yield data
                 except Exception as err:

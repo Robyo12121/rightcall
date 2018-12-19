@@ -64,7 +64,7 @@ def generate_path(path):
             logger.debug(item)
             if '.json' in item:
                 try:
-                    with open(path+item, 'r') as file:
+                    with open(path + item, 'r') as file:
                         data = json.load(file)
                         yield data
                 except Exception as err:
@@ -113,7 +113,7 @@ def normalize_tf(tf_vector):
 
 
 def dot_prod(a, b):
-    return sum([a[i]*b[i] for i in range(len(b))])
+    return sum([a[i] * b[i] for i in range(len(b))])
 
 
 def construct_vocab(words1, words2):

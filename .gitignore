@@ -140,3 +140,4 @@ lambda_functions/rightcall/*
 !lambda_functions/rightcall/id_gen.py
 !lambda_functions/rightcall/promotion.py
 !lambda_functions/rightcall/text.py
+!lambda_functions/rightcall/tests
