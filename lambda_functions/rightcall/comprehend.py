@@ -203,3 +203,8 @@ def get_key_phrases(text, language_code='en'):
 #        lighter brown than pictured but fairly close. Would be ten times \
 #        better if it was lined with cotton or wool on the inside."
 # get_sentiment(text)
+
+
+if __name__ == '__main__':
+    mytext = "Here is a neutral sentence. Things are ok. This company is ok"
+    print(get_sentiment(mytext))
