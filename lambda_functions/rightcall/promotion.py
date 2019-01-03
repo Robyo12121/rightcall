@@ -36,10 +36,10 @@ def setupLogging(LOGLEVEL, lambda_env=False):
 
 
 def get_stems(sentence):
-    """Given a sentence in a string:
-    Get all individual words using regex then stem those words
-    using PorterStemmer from NLTK
-    Return: List of stems of words"""
+    """
+    INPUT: string -- Input string
+    OUTPUT: string -- stemmed
+    Returns stemmed version of the input sentence"""
     word_pattern = re.compile("(?:[a-zA-Z]+[-–’'`ʼ]?)*[a-zA-Z]+[’'`ʼ]?")
     words = word_pattern.findall(sentence)
     porter_stemmer = PorterStemmer()
@@ -74,7 +74,6 @@ def generate_path(path):
 
 def bagofwords(sentence_words, vocab):
     """Given tokenized, words and a vocab
-    Checks if those words occur in vocab
     Returns term frequency array"""
     bag = [0] * len(vocab)
     for sw in sentence_words:
