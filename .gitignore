@@ -131,3 +131,13 @@ data/*
 # Picture
 *.PNG
 *.JPEG
+
+# AWS lambda build libraries
+lambda_functions/rightcall/*
+!lambda_functions/rightcall/lambda_function.py
+!lambda_functions/rightcall/comprehend.py
+!lambda_functions/rightcall/transcribe.py
+!lambda_functions/rightcall/id_gen.py
+!lambda_functions/rightcall/promotion.py
+!lambda_functions/rightcall/text.py
+!lambda_functions/rightcall/tests
