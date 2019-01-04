@@ -103,6 +103,12 @@ def preprocess(raw_sentence):
 
 
 def normalize_tf(tf_vector):
+    """Returns the normalized version of input vector
+    INPUT: list
+    OUTPUT: list
+    """
+    if type(tf_vector) is not list:
+        raise ValueError(f"Incorrect parameter type: {type(tf_vector)}")
     if not any(tf_vector):
         return False
     tf_sum_squares = sum([x**2 for x in tf_vector])
@@ -112,24 +118,32 @@ def normalize_tf(tf_vector):
 
 
 def dot_prod(a, b):
-    return sum([a[i] * b[i] for i in range(len(b))])
+    """Returns the dot vector product of two lists of numbers"""
+    if type(a) is not list: 
+        raise ValueError(f"Incorrect parameter type: {type(a)}")
+    elif type(b) is not list:
+        raise ValueError(f"Incorrect parameter type: {type(a)}")
+    else:
+        return sum([a[i] * b[i] for i in range(len(b))])
 
 
 def construct_vocab(words1, words2):
     """Combines words from two sentences into a single
-        dictionary
+        dictionary and assigns weighting of 1 to all words except
+        'virtual-assist' which should get 2
+        NOTE: weighting is unused by rest of program. Should be removed
         Input: words1 - List of strings
                words2 - List of strings
         Output: vocab - dictionary where key is word,
-                            value is weight of word"""
-    all_words = set(words1 + words2)
-    vocab = {}
-    for word in all_words:
-        # Give words in this list higher weighting as it almost certainly means a promotion
-        if word in ['virtual-assist']:
-            vocab[word] = 2
-        else:
-            vocab[word] = 1
+                            value is weighting given two word
+    """
+    if type(words1) is not list:
+        raise ValueError(f"Incorrect parameter type: {type(words1)}")
+    if type(words2) is not list:
+        raise ValueError(f"Incorrect parameter type: {type(words2)}")
+    # Gives 'virtual-assist' key a higher weighting
+    # Weighting in dict is unused by program should be removed
+    vocab = {w:(2 if w in ['virtual-assist'] else 1) for w in words1 + words2}
     return vocab
 
 
