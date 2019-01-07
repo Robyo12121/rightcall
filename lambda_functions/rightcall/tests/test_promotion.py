@@ -36,7 +36,6 @@ class PromotionTest(unittest.TestCase):
         self.assertEqual(logger.name, 'promotion')
         self.assertTrue(logger.hasHandlers())
         self.assertEqual(logging.getLevelName(logger.getEffectiveLevel()), loglevel)
-        
 
     def test_get_stems(self):
         stem_sent = promotion.get_stems(self.sentence)
@@ -50,6 +49,24 @@ class PromotionTest(unittest.TestCase):
         self.assertEqual(promotion.bagofwords(self.dog1, self.dog_vocab), self.correct_dog1_vec)
         self.assertEqual(promotion.bagofwords(self.dog2, self.dog_vocab), self.correct_dog2_vec)
 
+    def test_preprocess(self):
+        self.assertEqual(promotion.preprocess(self.sentence), self.stem_words)
+
+    def test_normalize_tf(self):
+        self.assertRaises(ValueError, promotion.normalize_tf, 6)
+        self.assertRaises(ValueError, promotion.normalize_tf, 'string')
+        self.assertRaises(ValueError, promotion.normalize_tf, {'my': 'dict'})
+
+    def test_dot_prod(self):
+        a = [1, 1, 0, 0, 1]
+        b = [0, 0, 1, 0, 1]
+        c = [-1, -2, 3]
+        d = [4, 0, -8]
+        self.assertEqual(promotion.dot_prod(a,b), 1)
+        a = 'this is not a list'
+        self.assertRaises(ValueError, promotion.dot_prod, a, b)
+        self.assertEqual(promotion.dot_prod(c,d), -28)
+
     def test_construct_vocab(self):
         """This function should:
             - remove duplicate words
@@ -61,20 +78,26 @@ class PromotionTest(unittest.TestCase):
         self.assertRaises(ValueError, promotion.construct_vocab, 'six', self.words2)
         self.assertRaises(ValueError, promotion.construct_vocab, self.words1, {'hello':'world'})
         
-    def test_preprocess(self):
+    def test_get_sentences(self):
+        """Dependencies:
+                Function: 'tokanize_aws_transcript'"""
+        
+
+    def test_sentence_similarity(self):
         pass
 
-    def test_dot_prod(self):
-        a = [1, 1, 0, 0, 1]
-        b = [0, 0, 1, 0, 1]
-        self.assertEqual(promotion.dot_prod(a,b), 1)
-        a = 'this is not a list'
-        self.assertRaises(ValueError, promotion.dot_prod, a, b)
+    def test_count_hits_in_sentence(self):
+        pass
 
-    def test_normalize_tf(self):
-        self.assertRaises(ValueError, promotion.normalize_tf, 6)
-        self.assertRaises(ValueError, promotion.normalize_tf, 'string')
-        self.assertRaises(ValueError, promotion.normalize_tf, {'my': 'dict'})    
+    def test_document_similarity(self):
+        pass
+
+    def test_Promotion(self):
+        pass
+
+
+        
+   
         
 
 if __name__ == '__main__':

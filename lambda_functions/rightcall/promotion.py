@@ -119,7 +119,7 @@ def normalize_tf(tf_vector):
 
 def dot_prod(a, b):
     """Returns the dot vector product of two lists of numbers"""
-    if type(a) is not list: 
+    if type(a) is not list:
         raise ValueError(f"Incorrect parameter type: {type(a)}")
     elif type(b) is not list:
         raise ValueError(f"Incorrect parameter type: {type(a)}")
@@ -143,7 +143,7 @@ def construct_vocab(words1, words2):
         raise ValueError(f"Incorrect parameter type: {type(words2)}")
     # Gives 'virtual-assist' key a higher weighting
     # Weighting in dict is unused by program should be removed
-    vocab = {w:(2 if w in ['virtual-assist'] else 1) for w in words1 + words2}
+    vocab = {w: (2 if w in ['virtual-assist'] else 1) for w in words1 + words2}
     return vocab
 
 
