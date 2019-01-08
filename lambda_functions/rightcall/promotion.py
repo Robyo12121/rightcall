@@ -3,6 +3,7 @@ import re
 import logging
 from math import sqrt
 import os
+import os.path
 import json
 from text import tokanize_aws_transcript
 import nltk
@@ -60,28 +61,32 @@ def get_stems(sentence):
     return stem_sentence
 
 
+def get_data(path):
+    try:
+        with open(path, 'r') as file:
+            data = json.load(file)
+            return data
+    except Exception as err:
+        logger.error(str(err))
+        raise err
+
+
 def generate_path(path):
     """Generate open file path for each file in
     given directory if it is json file"""
-    if '.json' in path:
-            try:
-                with open(path, 'r') as file:
-                    data = json.load(file)
-                    yield data
-            except Exception as err:
-                logger.error(str(err))
-                raise err
-    else:
+    logger = logging.getLogger(__name__)
+    logger.debug(f"{generate_path.__name__} Called with '{path}'")
+
+    if '.json' in path:  # Single file
+        logger.debug(f"{generate_path.__name__}: Single file at this path")
+        return get_data(path)
+    else:  # Directory of files
+        logger.debug(f"{generate_path.__name__}: Directory file at this path")
         for item in os.listdir(path):
-            logger.debug(item)
+            logger.debug(f"{generate_path.__name__}: Working on {item}")
+
             if '.json' in item:
-                try:
-                    with open(path + item, 'r') as file:
-                        data = json.load(file)
-                        yield data
-                except Exception as err:
-                    logger.error(str(err))
-                    raise err
+                yield get_data(path + item)
 
 
 def bagofwords(sentence_words, vocab):
@@ -167,7 +172,7 @@ def get_sentences(data):
     sentences = []
     if type(data) is dict:
         transcript_name = data['jobName'].split('--')[0]
-        logger.info(transcript_name)
+        logger.info(f"{get_sentences.__name__} : {transcript_name}")
         # Custom sentence tokanizer using AWS transcribe data
         transcribe_sents = tokanize_aws_transcript(data)
         sentences = [sentence['text'] for sentence in transcribe_sents]
@@ -180,7 +185,7 @@ def get_sentences(data):
         sentences.append({'text': data})
 
     else:
-        logger.error('TypeError')
+        logger.error(f'{get_sentences.__name__}: TypeError')
         return False
     return sentences
 
@@ -233,15 +238,14 @@ def document_similarity(document, keywords_string, threshold=0.4):
         similarity = sentence_similarity(sentence, keywords_string)
         if similarity > 0:
             num_sentence_hits += 1
-            logger.debug(f'Similarity Score: {similarity} -- Sentence: {sentence}')
+            logger.debug(f'{document_similarity.__name__} : Similarity Score: {similarity} -- Sentence: {sentence}')
             # Summing similarity scores for each sentence to get score for
             # entire document (may reintroduce effect of longer sentences
             # having higher score that normalizing was supposed to eliminate
             similarity_sum += similarity
             if 'virtual-assistant' in sentence and virtual_assistant_hit is False:
                 virtual_assistant_hit = True
-                logger.debug(f'"virtual-assistant" detected. \
-                                Increasing similarity sum by {VA_BOOST}')
+                logger.debug(f'{document_similarity.__name__} : "virtual-assistant" detected. Increasing similarity sum by {VA_BOOST}')
                 similarity_sum += VA_BOOST
 
             count, hits = count_hits_in_sentence(sentence, keywords_string)
@@ -250,13 +254,11 @@ def document_similarity(document, keywords_string, threshold=0.4):
     # If low number of sentences hits and no virtual assistant detected,
     # add extra boost based on number of individual word hits
     if num_sentence_hits <= 3 and virtual_assistant_hit is False:
-        logger.debug('Sentence Hits 2 or less and no virtual_assistant detected')
-        logger.debug(f'Document Unique Word Hit Count: {len(unique_word_hits)} - \
-                       Words : {unique_word_hits} - Increasing similarity sum \
-                       by {len(unique_word_hits) * COUNT_BOOST}')
+        logger.debug(f'{document_similarity.__name__} : Sentence Hits 2 or less and no virtual_assistant detected')
+        logger.debug(f'{document_similarity.__name__} : Document Unique Word Hit Count - {len(unique_word_hits)} - Words - {unique_word_hits} - Increasing similarity sum by {len(unique_word_hits) * COUNT_BOOST}')
         similarity_sum += len(unique_word_hits) * COUNT_BOOST
 
-    logger.info(f'Similarity Sum for file: {similarity_sum} - Threshold: {threshold}')
+    logger.info(f'{document_similarity.__name__} : Similarity Sum for file -  {similarity_sum} - Threshold: {threshold}')
     if similarity_sum > threshold:
         return True
     else:
@@ -281,41 +283,34 @@ def Promotion(transcript_text):
         results['Promo'] = 'success'
     else:
         results['Promo'] = 'none'
-    logger.info(f"Promotion: {results['Promo']}")
+    logger.info(f"{Promotion.__name__} : Results - {results['Promo']}")
     return results
 
 
+def MultiplePromotion(dir_path):
+    logger = logging.getLogger(__name__)
+    logger.debug(f"{MultiplePromotion.__name__} : Called with '{dir_path}''")
+    path = str(dir_path)
+    total_promos = 0
+    total_docs = 0
+    logger.debug(f"{path} is directory")
+    for data in generate_path(path):
+        promotion = Promotion(data)['Promo']
+        if promotion:
+            total_promos += 1
+        total_docs += 1
+    logger.info(f'{MultiplePromotion.__name__} : Total Matches - {total_promos} out of {total_docs} files')
+
+
 if __name__ == '__main__':
+    # Single file
     logger = setupLogging('DEBUG')
-    logger.debug(f"AWS EXECUTION ENV: {setupEnv(os.environ)}")
-    transcript = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/b76152TVd00246.json'
-    with open(transcript, 'r') as file:
-        data = json.load(file)
-    promo = Promotion(data)
-    logger.debug(promo)
+    # transcript = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/b76152TVd00246.json'
+    # with open(transcript, 'r') as file:
+    #     data = json.load(file)
+    # promo = Promotion(data)
+    # logger.debug(promo)
 
-    # logger = setupLogging('DEBUG')
-    # base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/'
-
-    # # promo_words = ['virtual', 'chat', 'technology', 'tool',
-    # #                   'vehicle', 'virtual agent', 'virtual-assistant',
-    # #                     'new-tool', 'ask-chat', 'chat', 'chat-with-us',
-    # #                   'pink-button', 'ask-I.T.']
-
-    # # Keep this intact - do not modify
-    # promo_words = ['technology', 'tool', 'virtual-assistant',
-    #                'new-tool', 'ask-chat', 'chat', 'chat-with-us',
-    #                'pink-button']
-
-    # promo_sent = ' '.join(promo_words)
-    # SIMILARITY_THRESHOLD = 0.4
-    # total_promos = 0
-    # total_docs = 0
-    # for data in generate_path(base_path):
-    #     print()
-    #     promotion = document_similarity(data, promo_sent, SIMILARITY_THRESHOLD)
-    #     logger.info(f'Promotion: {promotion}')
-    #     if promotion:
-    #         total_promos += 1
-    #     total_docs += 1
-    # logger.info(f'Total Matches: {total_promos} out of {total_docs} files')
+    # Directory with files
+    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/b76152TVd00246.json'
+    MultiplePromotion(base_path)
