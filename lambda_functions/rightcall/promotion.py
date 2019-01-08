@@ -10,8 +10,20 @@ from nltk import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
-if os.environ.get('AWS_EXECUTION_ENV') is not None:
-    nltk.data.path.append('/nltk_data')
+
+def setupEnv(env):
+    """Append '/nltk_data' to nltk data path and return True
+     if executing as lambda function
+     """
+    if env.get('AWS_EXECUTION_ENV') is not None:
+        try:
+            nltk.data.path.append('/nltk_data')
+        except Exception as e:
+            raise e
+        else:
+            return True
+    else:
+        return False
 
 
 def setupLogging(LOGLEVEL, lambda_env=False):
@@ -275,11 +287,12 @@ def Promotion(transcript_text):
 
 if __name__ == '__main__':
     logger = setupLogging('DEBUG')
+    logger.debug(f"AWS EXECUTION ENV: {setupEnv(os.environ)}")
     transcript = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/b76152TVd00246.json'
     with open(transcript, 'r') as file:
         data = json.load(file)
     promo = Promotion(data)
-    print(promo)
+    logger.debug(promo)
 
     # logger = setupLogging('DEBUG')
     # base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/'

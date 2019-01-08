@@ -1,5 +1,6 @@
 import unittest
-# from unittest.mock import patch
+from unittest.mock import mock
+from mock import Mock, MagicMock
 import sys
 import os.path
 import logging
@@ -26,7 +27,10 @@ class PromotionTest(unittest.TestCase):
         self.correct_dog2_vec = [0, 1, 1, 1]
 
     def test_execution_environment(self):
-        pass
+        os.environ['AWS_EXECUTION_ENV'] = 'python3.7'
+        self.assertTrue(promotion.setupEnv(os.environ))
+        os.environ.pop('AWS_EXECUTION_ENV')
+        self.assertFalse(promotion.setupEnv(os.environ))
 
     def test_setupLogging(self):
         loglevel = 'WRONG'
@@ -42,8 +46,14 @@ class PromotionTest(unittest.TestCase):
         self.assertEqual(stem_sent, self.correct_stem)
 
     def test_generate_path(self):
-        # myfakepath = 'C:/Users/Desktop/Robin/this/is/my/directory'
-        pass
+        myfakepath = 'C:/Users/Desktop/Robin/this/is/my/directory'
+        mock_open = Mock()
+        mock_open.return_value = MagicMock(spec=file)
+
+        with mock.patch('promotion.os.listdir') as mocked_listdir, \
+                mock.patch('promotion.open', create=True) as mock_open:
+                mocked_listdir.return_value = ['fakefile1.json', 'fakefile2.json', 'nonjsonfile.txt']
+                promotion.generate_path(myfakepath)
 
     def test_bagofwords(self):
         self.assertEqual(promotion.bagofwords(self.dog1, self.dog_vocab), self.correct_dog1_vec)
