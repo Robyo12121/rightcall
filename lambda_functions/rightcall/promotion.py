@@ -122,7 +122,7 @@ def dot_prod(a, b):
     if type(a) is not list:
         raise ValueError(f"Incorrect parameter type: {type(a)}")
     elif type(b) is not list:
-        raise ValueError(f"Incorrect parameter type: {type(a)}")
+        raise ValueError(f"Incorrect parameter type: {type(b)}")
     else:
         return sum([a[i] * b[i] for i in range(len(b))])
 
