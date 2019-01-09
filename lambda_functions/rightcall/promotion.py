@@ -27,11 +27,11 @@ def setupEnv(env):
         return False
 
 
-def setupLogging(LOGLEVEL, lambda_env=False):
+def setupLogging(LOGLEVEL='DEBUG', name=__name__, lambda_env=False):
     levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
     if LOGLEVEL not in levels:
         raise ValueError(f'Invalid log level choice {LOGLEVEL}')
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(name)
     logger.setLevel(LOGLEVEL)
     ch = logging.StreamHandler()
     ch.setLevel(LOGLEVEL)
@@ -73,18 +73,21 @@ def get_data(path):
 
 def generate_path(path):
     """Generate open file path for each file in
-    given directory if it is json file"""
+    given directory if it is json file
+    CORRECT USAGE: for data in promotion.generate_path(path):
+            //do stuff
+    INCORRECT USAGE: data = promotion.generate_path(path)"""
     logger = logging.getLogger(__name__)
     logger.debug(f"{generate_path.__name__} Called with '{path}'")
 
     if '.json' in path:  # Single file
         logger.debug(f"{generate_path.__name__}: Single file at this path")
+        logger.debug(f"{generate_path.__name__}: Returning data")
         return get_data(path)
     else:  # Directory of files
         logger.debug(f"{generate_path.__name__}: Directory file at this path")
         for item in os.listdir(path):
             logger.debug(f"{generate_path.__name__}: Working on {item}")
-
             if '.json' in item:
                 yield get_data(path + item)
 
@@ -104,7 +107,9 @@ def preprocess(raw_sentence):
     """Do all preprocessing of text:
         Tokenize words
         Stem words
-        Remove stop words"""
+        Remove stop words
+    INPUT: string
+    OUPUT: list of strings"""
     # Get words
     tokens = word_tokenize(raw_sentence)
     words = [w.lower() for w in tokens]
@@ -186,7 +191,7 @@ def get_sentences(data):
 
     else:
         logger.error(f'{get_sentences.__name__}: TypeError')
-        return False
+        raise TypeError(f'Unknown input type: {type(data)}')
     return sentences
 
 
@@ -223,8 +228,18 @@ def count_hits_in_sentence(sentence, keywords_string):
 
 
 def document_similarity(document, keywords_string, threshold=0.4):
-
+    """Returns True if similarity between document and
+    keywords string score above the threshold.
+        INPUT: document (dict, list or string) - transcript text
+               keywords_string (string) - combined from desired keywords
+              threshold - (float)
+        OUTPUT: boolean"""
     logger = logging.getLogger(__name__)
+    logger.debug(f"{document_similarity.__name__} : called with {type(document)}, {type(keywords_string)}, {type(threshold)}")
+    if type(document) not in [dict, list, str]:
+        raise TypeError(f"{document_similarity.__name__} : Invalid argument: {type(document)}")
+    elif type(keywords_string) is not str:
+        raise TypeError(f"{document_similarity.__name__} : Invalid argument: {type(keywords_string)}")
     sentences = get_sentences(document)
     similarity_sum = 0
     VA_BOOST = threshold
@@ -265,10 +280,13 @@ def document_similarity(document, keywords_string, threshold=0.4):
         return False
 
 
-def Promotion(transcript_text):
-    """Lambda entry point"""
+def Promotion(transcript_text, return_bool=False):
+    """Lambda entry point
+    If 'return_bool' is True this function returns True or False
+    If False, this function returns a string 'success' or 'none'"""
     # LOGLEVEL = 'DEBUG'
     logger = logging.getLogger(__name__)
+    logger.debug(f"{Promotion.__name__} : return_bool - {return_bool}")
     smaller_promo_words = ['technology', 'tool', 'virtual-assistant',
                            'new-tool', 'ask-chat', 'chat', 'chat-with-us',
                            'pink-button']
@@ -278,33 +296,39 @@ def Promotion(transcript_text):
     promotion = document_similarity(transcript_text,
                                     promo_sent,
                                     SIMILARITY_THRESHOLD)
-    results = {}
-    if promotion:
-        results['Promo'] = 'success'
+    if return_bool:
+        return promotion
     else:
-        results['Promo'] = 'none'
-    logger.info(f"{Promotion.__name__} : Results - {results['Promo']}")
-    return results
+        results = {}
+        if promotion:
+            results['Promo'] = 'success'
+        else:
+            results['Promo'] = 'none'
+        logger.info(f"{Promotion.__name__} : Results - {results['Promo']}")
+        return results
 
 
-def MultiplePromotion(dir_path):
+def check_directory(dir_path, function, *args, **kwargs):
+    """Given a directory and a function with a True/False return value,
+    applies it to all files in directory keeping track of results """
     logger = logging.getLogger(__name__)
-    logger.debug(f"{MultiplePromotion.__name__} : Called with '{dir_path}''")
+    logger.debug(f"{check_directory.__name__} : Called with '{dir_path}', and function '{function.__name__}'")
     path = str(dir_path)
-    total_promos = 0
+    total_hits = 0
     total_docs = 0
     logger.debug(f"{path} is directory")
     for data in generate_path(path):
-        promotion = Promotion(data)['Promo']
-        if promotion:
-            total_promos += 1
+        result = function(data, *args, **kwargs)
+        logger.debug(f"Result: {result}, {type(result)}")
+        if result:
+            total_hits += 1
         total_docs += 1
-    logger.info(f'{MultiplePromotion.__name__} : Total Matches - {total_promos} out of {total_docs} files')
+    return total_hits, total_docs
 
 
 if __name__ == '__main__':
     # Single file
-    logger = setupLogging('DEBUG')
+    logger = setupLogging('DEBUG', name=__name__)
     # transcript = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/b76152TVd00246.json'
     # with open(transcript, 'r') as file:
     #     data = json.load(file)
@@ -312,5 +336,6 @@ if __name__ == '__main__':
     # logger.debug(promo)
 
     # Directory with files
-    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/b76152TVd00246.json'
-    MultiplePromotion(base_path)
+    base_path = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/transcripts/Promo/'
+    total_promo, total_docs = check_directory(base_path, Promotion, return_bool=True)
+    logger.info(f'Total Matches - {total_promo} out of {total_docs} files')
