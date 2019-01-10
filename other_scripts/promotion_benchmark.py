@@ -10,16 +10,17 @@ json_path = data + 'comprehend/Promo/'
 
 promo_refs = [file.split('.')[0] for file in os.listdir(json_path)]
 
-promo_items = {} #{for ref in promo_ref}
+promo_items = {}  # {for ref in promo_ref}
 
 for ref in promo_refs:
     with open(json_path + ref + '.json', 'r') as f:
         promo_items[ref] = json.load(f)
 
+
 def test_promo_accuracy(function, data):
     print(f"Testing {function.__name__} function")
     accurately_detected = 0
-    for k,v in data.items():
+    for k, v in data.items():
         promo = function(v['text'])
         print(f"{k} - function detected: {promo} -- Actual: success")
         if promo == 'success':
@@ -30,4 +31,3 @@ def test_promo_accuracy(function, data):
 
 if __name__ == '__main__':
     test_promo_accuracy(check_promo, promo_items)
-

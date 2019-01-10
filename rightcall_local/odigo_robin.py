@@ -8,10 +8,10 @@ import datetime
 import pandas as pd
 from bs4 import BeautifulSoup
 from requestium import Session
-from selenium.webdriver.common.action_chains import ActionChains
+# from selenium.webdriver.common.action_chains import ActionChains
 from dotenv import load_dotenv
 import logging
-from lxml import html
+# from lxml import html
 
 module_logger = logging.getLogger('Rightcall.odigo_robin')
 
@@ -21,6 +21,7 @@ username = os.environ.get('PROSODIE_USERNAME')
 passwd = os.environ.get('PROSODIE_PASSWORD')
 print(sys.version)
 driver = r'C:\Users\RSTAUNTO\Desktop\chromedriver.exe'
+
 
 def change_date_format(date):
     try:
@@ -107,7 +108,7 @@ def download_mp3(s, path=None, ref=None, xpath=None):
         path = '%s.mp3' % ref
     if r.status_code == 200:
         with open(path, 'wb') as f:
-            for chunk in r.iter_content(1024*2014):
+            for chunk in r.iter_content(1024 * 2014):
                 f.write(chunk)
     else:
         return 1
@@ -157,7 +158,7 @@ def download_mp3_by_csv(s, username, passwd, csv_path, download_dir=None):
     length = len(refs)
     for i, ref in enumerate(refs):
         sys.stdout.write('\r')
-        sys.stdout.write('downloading: %s/%s' % (i+1, length))
+        sys.stdout.write('downloading: %s/%s' % (i + 1, length))
         sys.stdout.flush()
         s = search_by_ref(s, ref)
         mp3_path = None
@@ -191,7 +192,7 @@ def download_all_csv(s, username, passwd, download_dir=None):
         csvB.ensure_click()
     else:
         print("Not Visible")
-    yes = s.driver.ensure_element_by_id("button-1006")
+    s.driver.ensure_element_by_id("button-1006")
     # yes = s.driver.ensure_element_by_css_selector("#button-1006")
     # yes.ensure_click()
     # full_xpath = """//div[@id='messagebox-1001']/div[@id='messagebox-1001-toolbar']/div[@id='messagebox-1001-toolbar-innerCt']/div[@id='messagebox-1001-toolbar-targetEl']/a[@id='button-1006'])"""
@@ -240,8 +241,7 @@ def login(s, username, passwd):
 
 def search_by_range(s, start_date=None, start_time=None, end_date=None,
                     end_time=None):
-    """ Doesn't work correctly. Date seems to work but time not so much. 
-        
+    """ Doesn't work correctly. Date seems to work but time not so much.
 
     Search records on www.prosodie.com by date range and return session.
     Input:
@@ -306,42 +306,47 @@ def search_by_ref(s, ref):
     s.driver.ensure_element_by_id('button-1009').click()
     return s
 
+
 def messages_per_page(s):
     pass
+
 
 def count_recordings(s):
     """Doesn't Work"""
     refs = []
     items = s.driver.find_elements_by_css_selector('#gridview-1064-body')
-##    items = s.driver.ensure_elements_by_xpath('//*[@id="gridview-1064-body"]')
+#    items = s.driver.ensure_elements_by_xpath('//*[@id="gridview-1064-body"]')
     for item in items:
         ref_num = s.driver.ensure_element_by_css_selector('#ext-gen1440 > div:nth-child(1)')
         refs.append(ref_num)
     # refs = s.driver.find_elements_by_xpath('//*[@id="gridview-1064-record-6203746"]')
     return refs
 
+
 def get_num_results(s):
     """Doesn't work. Only returns 'RESULTS : ' and no number"""
     text2 = s.driver.ensure_element_by_css_selector('#resultLabelId').text
-    return text, text2
+    return text2
+
 
 def get_text(s, element_xpath):
     """Given the xpath returns the web element text"""
     text = s.driver.ensure_element_by_xpath(element_xpath)
     return text.text
 
+
 def xpath_generator(common, ending, loop_element, count=10):
     """Given common xpath and ending xpath:
     return a generator to loop through that xpath element
     """
     for i in range(count):
-        yield (common + loop_element + '[' + str(i+1)+ ']' + ending)
+        yield (common + loop_element + '[' + str(i + 1) + ']' + ending)
+
 
 def loop_through_table(s):
     table = s.driver.ensure_element_by_xpath('//*[@id="gridview-1064-body"]')
     for row in table.find_elements_by_xpath('.//tr'):
         print([td.text for td in row.find_element_by_xpath('//*[contains(@class, x-grid-cell-col)][text()]')])
-    
 
 
 if __name__ == '__main__':
@@ -349,41 +354,39 @@ if __name__ == '__main__':
 
     download_mp3_by_csv(s, username, passwd, 'data/csvs/to_download.csv', 'data/mp3s/')
 
-    
-##    d = datetime.datetime.now()
-##    s = login(s, username, passwd)
-##    search_range = set_range(d)
-##    print(search_range)
-##    s = search_by_range(s, search_range[0],
-##                        search_range[1],
-##                        search_range[2],
-##                        search_range[3])
-##    time.sleep(0.5)
-##    s = search_by_language(s, language="_EN")
-##    time.sleep(0.5)
-##    table = loop_through_table(s)
-##    common =       '/html/body/div[2]/div[3]/div[2]/div[5]/div/div/span/div/div/div[2]/div/div/div[1]/div[2]/div/table/tbody/'
-##    body = '//*[@id="gridview-1064-body"]'
-##    ref_num_path = 'tr[1]/td[3]/div'
-##    time_path = '/td[4]/div'
-##    mp3_path = '/td[2]/div/img'
-##    time_gen = xpath_generator(common, time_path, 'tr')
-##    mp3_gen = xpath_generator(common, mp3_path, 'tr')
-##    while True:
-##        try:
-##            rec_time = get_text(s, next(time_gen))
-##            print(rec_time)
-##            s = download_mp3(s, xpath=next(mp3_gen))
-##            
-##        except Exception as e:
-##            print(f"Exception occured: {e}")
-##            raise e
-            
-            
-##    text, text2 = get_num_results(s)
-##    refs = count_recordings(s)
-##    download_mp3(s)
-##    s.driver.close()
+#    d = datetime.datetime.now()
+#    s = login(s, username, passwd)
+#    search_range = set_range(d)
+#    print(search_range)
+#    s = search_by_range(s, search_range[0],
+#                        search_range[1],
+#                        search_range[2],
+#                        search_range[3])
+#    time.sleep(0.5)
+#    s = search_by_language(s, language="_EN")
+#    time.sleep(0.5)
+#    table = loop_through_table(s)
+#    common =       '/html/body/div[2]/div[3]/div[2]/div[5]/div/div/span/div/div/div[2]/div/div/div[1]/div[2]/div/table/tbody/'
+#    body = '//*[@id="gridview-1064-body"]'
+#    ref_num_path = 'tr[1]/td[3]/div'
+#    time_path = '/td[4]/div'
+#    mp3_path = '/td[2]/div/img'
+#    time_gen = xpath_generator(common, time_path, 'tr')
+#    mp3_gen = xpath_generator(common, mp3_path, 'tr')
+#    while True:
+#        try:
+#            rec_time = get_text(s, next(time_gen))
+#            print(rec_time)
+#            s = download_mp3(s, xpath=next(mp3_gen))
+#
+#        except Exception as e:
+#            print(f"Exception occured: {e}")
+#            raise e
+
+#    text, text2 = get_num_results(s)
+#    refs = count_recordings(s)
+#    download_mp3(s)
+#    s.driver.close()
     # element = download_all_csv(s, username, passwd)
     # print(element)
     # print(type(element))
@@ -394,10 +397,6 @@ if __name__ == '__main__':
     # download_mp3_by_csv(s, username, passwd,
     #                     'csvs/toget.csv', download_dir='mp3s')
 
-
-
-
-    
     # Example. Download mp3 file from www.prosodie.com by '3905beTOd10339'
     # ref number
     # download_mp3_by_ref(s, username, passwd, '3905beTOd10339')

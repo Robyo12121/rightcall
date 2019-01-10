@@ -82,8 +82,13 @@ def Transcribe(event):
 
 def Comprehend(event):
     """
-    Cloudwatch 'Transcribe finished' event received.
-    Go to destination bucket and get <job name>.json
+    INPUT: 'AWS Transcribe 'JobFinished' event (JSON)
+    Retrieves the file specified in the event from the 'TRANSCRIPTS' bucket
+    Passes the transcript to Comprehend for sentiment, entities and keywords
+    Checks whether a promotion occurred using 'promotion.py'
+    Creates a json object to reflect all this data and stores it in
+    the 'COMPREHEND' bucket
+    OUTPUT : Success/failure of s3.put_object function
     """
     # Fetch json file related to completed transcribe event from DESTINATION
     # s3 bucket
@@ -156,9 +161,8 @@ def Comprehend(event):
 
 
 def event_type_transcribe_job_status(event):
-    """Check if event is from Cloudwatch
-        If 'aws.transcribe' event from Cloudwatch return True
-        Else return False
+    """
+    Returns True if incoming event is from transcribe
     """
     if 'source' in event and event['source'] == 'aws.transcribe':
         logger.info('Job: {} Status: {}'.format(
@@ -185,8 +189,17 @@ def event_type_sqs_s3_new_object(event):
 
 
 def Rightcall(event):
-    """Determine event type (S3 or Cloudwatch) and
-    take appropriate action"""
+    """
+    Given an AWS event, determines event type (S3 or Cloudwatch) and
+    take appropriate action.
+        If event is an S3 'Object Created' event (delivered through SQS)
+        then there is a new object in the jobs folder of the 'rightcall.mp3' bucket
+        and the mp3 will be passed to Transcribe function.
+        If the event is a Cloudwatch 'TranscribeJobFinished' event the Comprehend
+        function will be called to process the finished transcription.
+    INPUT: AWS Event - (S3 Object Created or Cloudwatch - Transcribe job finisehd
+    OUTPUT: Success/Failure of Comprehend or Transcribe function
+    """
     response = {}
     if event_type_transcribe_job_status(event):
         logger.info('Transcribe job event received. Sending to Comprehend.')
@@ -201,8 +214,9 @@ def Rightcall(event):
 
 
 def lambda_handler(event, context):
-    """ New MP3 file uploaded to 'mp3.rightcall'
-    Event sent to this lambda function from s3 bucket
+    """
+    Entrypoint for lambda function.
+    Passes received event (any type) to Rightcall function.
     """
     logger.info('Received event: {}'.format(str(json.dumps(event, indent=2))))
     response = Rightcall(event)

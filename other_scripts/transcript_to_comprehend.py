@@ -11,7 +11,7 @@ import boto3
 import json
 import logging
 import sys
-import datetime
+# import datetime
 
 sys.path.append('../')
 from lambda_functions.rightcall.lambda_function import Comprehend
@@ -38,6 +38,7 @@ def get_bucket_item(partial_key, bucket_name):
     resp = json.loads(s3.get_object(Bucket=bucket_name,
                                     Key=match)['Body'].read().decode('utf-8'))
     return resp
+
 
 def main():
     keys = s3.list_objects_v2(Bucket=TRANSCRIBE_BUCKET)

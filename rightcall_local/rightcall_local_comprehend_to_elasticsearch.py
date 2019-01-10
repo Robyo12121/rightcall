@@ -9,7 +9,6 @@
         If exists without metadata add ref to list csv file of refs for which metadata
             is needed.
         If doesn't exist in index, download it and try to get metadata
-    
 """
 
 import dynamodb_tools
@@ -19,7 +18,7 @@ import pandas as pd
 import boto3
 import json
 import logging
-import datetime
+# import datetime
 
 
 RC_DIR = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/'
@@ -41,13 +40,13 @@ dynamodb = boto3.resource('dynamodb',
                           endpoint_url=DB_ENDPOINT)
 s3 = boto3.client('s3')
 es = elasticsearch_tools.Elasticsearch([{'host': 'localhost',
-                     'port': 9200}])
+                                         'port': 9200}])
 table = dynamodb.Table(TABLE_NAME)
 
 LOGLEVEL = 'DEBUG'
 
 # Logging
-levels=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 if LOGLEVEL not in levels:
     raise ValueError(f"Invalid log level choice {LOGLEVEL}")
 logger = logging.getLogger('Rightcall')
@@ -74,14 +73,16 @@ def parse_csv(path_to_file):
     data = json.loads(json_file)
     return data
 
+
 def write_to_csv(ref_list, path):
     logger.debug(ref_list)
     df = pd.DataFrame.from_dict({'col': ref_list})
     logger.debug(f"Writing {df} records back to csv")
     try:
-        df.to_csv(path, sep=';', header=False,index=False)
+        df.to_csv(path, sep=';', header=False, index=False)
     except PermissionError:
         logger.info(df)
+
 
 def get_reference_number_from_object_name(object_name_string):
     """ Given s3 object name: 'e23413582523--QUIDP.json' or 'e23413582523P.json':
@@ -91,19 +92,19 @@ def get_reference_number_from_object_name(object_name_string):
     if '--' in object_name_string:
         reference_number = object_name_string.split('--')[0]
     elif '.json' in object_name_string:
-        reference_number =  object_name_string.split('.')[0]
+        reference_number = object_name_string.split('.')[0]
     else:
         reference_number = object_name_string
     logger.debug(f"Ref Num: {reference_number}")
     if '--' in reference_number or '.json' in reference_number:
         raise ValueError(f"Invalid characters detected in reference number: {object_name_string}")
-    return reference_number        
-    
+    return reference_number
+
 
 def get_all_refs_from_s3_objects(bucket_name):
     """Given an s3 bucket name, returns a list of the reference numbers
     contained in the names of all objects in that bucket
-    
+
     Input: <string> 'comprehend.rightcall'
     Output: <list> ['b310f08130r3', 'c210935j22239', ...]
     """
@@ -116,9 +117,10 @@ def get_all_refs_from_s3_objects(bucket_name):
         list_of_reference_numbers.append({'Name': ref})
     return list_of_reference_numbers
 
+
 def update_existing_items(BUCKET):
     refs = get_all_refs_from_s3_objects(BUCKET)
-    get_meta_data = []
+    # get_meta_data = []
     for i, call_record in enumerate(refs):
         s3_item = None
         ref = call_record['Name']
@@ -131,9 +133,10 @@ def update_existing_items(BUCKET):
             logger.error(str(err))
     return
 
+
 def add_new_or_incomplete_items(BUCKET):
     """Ensures elasticsearch index has all the records that exist in comprehend.rightcall bucket
-        and that they are fully populated with as much information as possible. 
+        and that they are fully populated with as much information as possible.
     Pulls objects down from comprehend.rightcall bucket.
         For each object:
             Checks if it exists in elasticsearch already.
@@ -143,38 +146,37 @@ def add_new_or_incomplete_items(BUCKET):
                 if so - grabs it from dynamodb, combines it with s3 obeject data
                     and uploads to elasticsearch index
                 if not - adds the filename (refNumber) to csv file to be returned."""
-    
+
     refs = get_all_refs_from_s3_objects(BUCKET)
     get_meta_data = []
-            
+
     # For each reference number:
     for i, call_record in enumerate(refs):
         s3_item = None
         db_item = None
         logger.debug('---------------------------------------')
         logger.debug(f"Working on {i} : {call_record['Name']}")
-        
+
         ref = call_record['Name']
-        
+
         if elasticsearch_tools.exists(es, INDEX_NAME, ref):
-            logger.debug(f"{ref} already in {INDEX_NAME} index")               
+            logger.debug(f"{ref} already in {INDEX_NAME} index")
 
         else:
             logger.debug(f"{ref} not in {INDEX_NAME} index")
-            
+
             logger.debug(f"Checking {BUCKET} bucket for {call_record['Name']}")
             s3_item = s3py.get_first_matching_item(ref, BUCKET)
-            
+
             logger.debug(f"Preparing data")
             s3_item = elasticsearch_tools.rename(s3_item)
-
 
         if elasticsearch_tools.fully_populated_in_elasticsearch(ref, es, INDEX_NAME):
             logger.debug(f"{ref} fully populated in {INDEX_NAME}")
             continue
         else:
             logger.debug(f"{ref} missing metadata")
-                   
+
         logger.debug(f"Checking {table} database for missing metadata")
         db_item = dynamodb_tools.get_db_item(ref, table)
         if not db_item:
@@ -183,7 +185,7 @@ def add_new_or_incomplete_items(BUCKET):
             continue
         else:
             logger.debug(f"Data present in {table} database: {db_item}")
-              
+
         # Upload to elasticsearch
         if s3_item is None:
             logger.debug(f"Ensuring object is downloaded from {BUCKET}")
@@ -191,27 +193,26 @@ def add_new_or_incomplete_items(BUCKET):
             # Prepare data for ES
             logger.debug(f"cleaning data")
             s3_item = elasticsearch_tools.rename(s3_item)
-            
+
         logger.debug(f"Combining data for {ref} from {table} and {BUCKET} and adding to {INDEX_NAME} index")
 
         result = elasticsearch_tools.load_call_record(
-                db_item,
-                s3_item,
-                es,
-                INDEX_NAME)
+            db_item,
+            s3_item,
+            es,
+            INDEX_NAME)
         if result:
             logger.debug(f"{ref} successfully added to {INDEX_NAME} index")
         else:
             logger.error(f"Couldn't upload to elasticsearch: {result}")
 
     logger.debug(f"Refs without metadata {get_meta_data}")
-    return get_meta_data      
+    return get_meta_data
 
 
 if __name__ == '__main__':
-##    json_data = parse_csv(CSV)
-##    get_meta_data = add_new_or_incomplete_items('comprehend.rightcall')
     update_existing_items('comprehend.rightcall')
-##    if get_meta_data is not None:
-##        write_to_csv(get_meta_data, RC_DIR + '/data/csvs/'+ 'to_download.csv')
-    
+#    json_data = parse_csv(CSV)
+#    get_meta_data = add_new_or_incomplete_items('comprehend.rightcall')
+#    if get_meta_data is not None:
+#        write_to_csv(get_meta_data, RC_DIR + '/data/csvs/'+ 'to_download.csv')

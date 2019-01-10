@@ -81,7 +81,7 @@ def generate_path(path):
             logger.debug(item)
             if '.json' in item:
                 try:
-                    with open(path+item, 'r') as file:
+                    with open(path + item, 'r') as file:
                         data = json.load(file)
                         yield data
                 except Exception as err:
@@ -239,7 +239,7 @@ def document_similarity(document, keywords_string, threshold=0.4):
     if num_sentence_hits <= 3 and virtual_assistant_hit is False:
         logger.debug("Sentence Hits 2 or less and no virtual_assistant detected")
         logger.debug(f"Document Word Hit Count: {word_hit_count}. Increasing similarity sum by {word_hit_count*COUNT_BOOST}")
-        similarity_sum += word_hit_count*COUNT_BOOST
+        similarity_sum += word_hit_count * COUNT_BOOST
 
     logger.info(f"Similarity Sum for file: {similarity_sum} - Threshold: {threshold}")
     if similarity_sum > threshold:
