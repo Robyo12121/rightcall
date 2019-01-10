@@ -1,15 +1,15 @@
 import json
-import logging
+# import logging
 
 
 def tokanize_sentences(transcribe_data):
     """Divides transcript into sentences based on end of sentence punctuation,
     the speaker changing, a gap without a word spoken exceeds the threshold or
     the size limit threshold is reached."""
-    transcript = transcribe_data['results']['transcripts'][0]
+    # transcript = transcribe_data['results']['transcripts'][0]
     items = transcribe_data['results']['items']
     contents = ""
-    timedata = []
+    # timedata = []
 
     prevEndTime = -1
     paragraphGap = 1.5
@@ -27,7 +27,6 @@ def tokanize_sentences(transcribe_data):
             speakerMapping.append({"speakerLabel": speakerLabel['speaker_label'],
                                    "endTime": float(speakerLabel['end_time'])})
 
-
     speakerIndex = 0
 
     retval = []
@@ -42,7 +41,7 @@ def tokanize_sentences(transcribe_data):
         if items[i]['type'] == 'punctuation':
             if items[i]["alternatives"][0]["content"] == '.':
                 newParagraph = True
-                
+
             contents += items[i]["alternatives"][0]["content"]
 
         # Add the start time to the string -> timedata
@@ -52,13 +51,12 @@ def tokanize_sentences(transcribe_data):
             if prevStartTime == -1:
                 prevStartTime = float(items[i]["start_time"])
 
-                
             # gap refers to the amount of time between spoken words
             gap = float(items[i]["start_time"]) - prevEndTime
 
             if hasSpeakerLabels:
                 while speakerIndex < (len(speakerMapping) - 1) and speakerMapping[speakerIndex + 1]['endTime'] < \
-                      float(items[i]["start_time"]):
+                        float(items[i]["start_time"]):
 
                     speakerIndex += 1
 
@@ -95,7 +93,7 @@ def tokanize_sentences(transcribe_data):
                 # Reset the contents and the time mapping
                 # print('paragraph:' + contents)
                 contents = ""
-                timedata = []
+                # timedata = []
                 prevEndTime = -1
                 prevStartTime = -1
                 newParagraph = False
@@ -110,8 +108,6 @@ def tokanize_sentences(transcribe_data):
 
             # Always assume the first guess is right.
             word = items[i]["alternatives"][0]["content"]
-
-
             contents += word
 
     return retval
@@ -129,7 +125,3 @@ if __name__ == '__main__':
         print(f"Speaker: {item['speaker']} : {item['text']}")
 
     print(len(sentences))
-                    
-                    
-                        
-            
