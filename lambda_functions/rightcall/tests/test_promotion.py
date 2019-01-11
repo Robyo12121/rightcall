@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import mock
+from unittest import mock
 from mock import Mock, MagicMock
 import sys
 import os.path
@@ -45,15 +45,24 @@ class PromotionTest(unittest.TestCase):
         stem_sent = promotion.get_stems(self.sentence)
         self.assertEqual(stem_sent, self.correct_stem)
 
-    def test_generate_path(self):
-        myfakepath = 'C:/Users/Desktop/Robin/this/is/my/directory'
-        mock_open = Mock()
-        mock_open.return_value = MagicMock(spec=file)
+    # def test_get_data(self):
+    #     with mock.patch(f"{__name__}.open", mock.mock_open(read_data="{'some': 'dict'}")) as mock_file:
+    #         fake_path = '/home/pi/some/silly/file.json'
+    #         data = promotion.get_data(fake_path)
+    #         self.assertEqual(data, "{'some': 'dict'}")
+    #         assert open("path/to/open").read() == "{'some': 'dict'}"
+    #         mock_file.assert_called_with("path/to/open")
 
-        with mock.patch('promotion.os.listdir') as mocked_listdir, \
-                mock.patch('promotion.open', create=True) as mock_open:
-                mocked_listdir.return_value = ['fakefile1.json', 'fakefile2.json', 'nonjsonfile.txt']
-                promotion.generate_path(myfakepath)
+    @mock.patch('promotion.get_data', return_value={'some': 'dict'})
+    @mock.patch('os.listdir', return_value=['fakefile1.json', 'fakefile2.json', 'nonjsonfile.txt'])
+    def test_generate_path(self, get_data, listdir):
+        import inspect
+        generator = promotion.generate_path('C:/Users/Desktop/Robin/this/is/my/directory/')
+        self.assertTrue(inspect.isgenerator(generator))
+        result = list(generator)
+        self.assertEqual(result, [{'some': 'dict'}, {'some': 'dict'}])
+        # data = list(promotion.generate_path('/home/pi/some/silly/file.json'))
+        # self.assertEqual(data, ({'some': 'dict'}))
 
     def test_bagofwords(self):
         self.assertEqual(promotion.bagofwords(self.dog1, self.dog_vocab), self.correct_dog1_vec)
