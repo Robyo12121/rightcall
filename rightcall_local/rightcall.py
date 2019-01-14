@@ -4,11 +4,11 @@ from comprehend_to_elasticsearch import Comp2Elas
 
 
 @click.group()
-def rightcall_local():
+def rightcall():
     pass
 
 
-@rightcall_local.group()
+@rightcall.group()
 @click.option('--debug/--no-debug', default=False)
 @click.pass_context
 def elasticsearch(ctx, debug):
@@ -45,7 +45,7 @@ def update(comp2elas, source):
 
 
 if __name__ == '__main__':
-    rightcall_local()
+    rightcall()
 
 """
 CLI Tool Design:

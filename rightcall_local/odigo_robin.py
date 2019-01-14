@@ -194,6 +194,10 @@ def download_all_csv(s, username, passwd, download_dir=None):
     else:
         print("Not Visible")
     s.driver.ensure_element_by_id("button-1006")
+<<<<<<< HEAD
+=======
+    # yes = s.driver.ensure_element_by_id("button-1006")
+>>>>>>> Renamed rightcall_local.py to rightcall.py. Flake8 changes to odigo_robin.py
     # yes = s.driver.ensure_element_by_css_selector("#button-1006")
     # yes.ensure_click()
     # full_xpath = """//div[@id='messagebox-1001']/div[@id='messagebox-1001-toolbar']/div[@id='messagebox-1001-toolbar-innerCt']/div[@id='messagebox-1001-toolbar-targetEl']/a[@id='button-1006'])"""
@@ -353,7 +357,12 @@ def loop_through_table(s):
 if __name__ == '__main__':
     s = setup()
 
+<<<<<<< HEAD
     download_mp3_by_csv(s, username, passwd, 'data/csvs/metadata.csv', 'data/mp3s/demo/')
+=======
+    download_mp3_by_csv(s, username, passwd, 'data/csvs/to_download.csv', 'data/mp3s/')
+
+>>>>>>> Renamed rightcall_local.py to rightcall.py. Flake8 changes to odigo_robin.py
 
 #    d = datetime.datetime.now()
 #    s = login(s, username, passwd)
@@ -384,6 +393,10 @@ if __name__ == '__main__':
 #            print(f"Exception occured: {e}")
 #            raise e
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> Renamed rightcall_local.py to rightcall.py. Flake8 changes to odigo_robin.py
 #    text, text2 = get_num_results(s)
 #    refs = count_recordings(s)
 #    download_mp3(s)
