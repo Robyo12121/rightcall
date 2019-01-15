@@ -3,7 +3,7 @@ import pandas as pd
 import boto3
 import json
 import logging
-
+from decimal import Decimal
 module_logger = logging.getLogger(__name__)
 
 
@@ -32,12 +32,17 @@ def write_csv_to_db(csv_filepath, table):
             print(f"Item {call['Name']} already exists")
 
 
-def put_call(call, table):
+def put_call(call, table, minutes=False):
+    """Put a call item (call metadata) into dynamodb database
+    INPUTS: call - dictionary containing call meta data info including, at minimum:
+        'Name', 'Date', 'Length', 'Skill' fields
+            table - the dynamodb table object to put data into
+            minutes - A flag which, if True, will convert the 'Length' filed from seconds into minutes"""
     module_logger.debug(f"put_call called with {call['Name']} on {table}")
     try:
         response = table.put_item(Item={'referenceNumber': call['Name'],
                                         'date': call['Date'],
-                                        'length': call['Length'],
+                                        'length': Decimal(call['Length'] / 60) if minutes else Decimal(call['Length']),
                                         'skill': call['Skill']})
     except Exception as e:
         raise e

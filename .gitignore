@@ -142,3 +142,5 @@ lambda_functions/rightcall/*
 !lambda_functions/rightcall/text.py
 !lambda_functions/rightcall/tests/
 !lambda_functions/rightcall/script.py
+!lambda_functions/rightcall/metadata_to_dynamodb.py
+!lambda_functions/rightcall/dynamodb_tools.py
