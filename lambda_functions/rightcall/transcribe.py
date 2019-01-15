@@ -10,10 +10,11 @@ logger = logging.getLogger(__name__)
 def transcribe_mp3(src, dst, job_name=None, language_code='en-US'):
     """Transcribe mp3 file with AWS Transcribe.
     Input:
-        src -- S3 location of the src mp3 file (required | type: str). Example:
+        src -- S3 location of the src mp3 file (required | type: str).
+            Example:
                'https://s3-eu-west-1.amazonaws.com/examplebucket/example.mp3';
-        dst -- S3 bucket where the transcription is stored (not required |
-               type: str). Example:
+        dst -- S3 bucket where the transcription is stored (not required | type: str).
+            Example:
                'example-bucket';
         job_name -- the name of the job (not required | type: str);
         language_code -- language code for the language used in the input mp3
