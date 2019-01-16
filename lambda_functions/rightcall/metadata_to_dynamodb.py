@@ -31,14 +31,13 @@ data = s3.get_object(Bucket=DEMO, Key=filename)['Body'].read().decode('utf-8')
 # logging.info(type(data))
 
 data = json.loads(data)
-logging.info(data)
 # Upload each call record to dynamodb
 logging.info(f"Type data: {type(data)}")
-logging.info(f"Keys: {data.keys()}")
-logging.info(data['demo_metadata'])
+logging.info(f"Keys: {data['demo_metadata']}")
 
 for i, item in enumerate(data['demo_metadata']):
     logging.info(f"Item {i}: {item}")
 
-rtable = dynamodb_tools.RightcallTable(REGION, TABLE_NAME)
-rtable.batch_write(data['demo_metadata'])
+
+# rtable = dynamodb_tools.RightcallTable(REGION, TABLE_NAME)
+# rtable.batch_write(data['demo_metadata'])

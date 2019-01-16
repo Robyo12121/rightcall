@@ -11,7 +11,7 @@ getcontext().prec = 2
 def seconds2minutes(item):
     logging.info(f"{__name__}: {item}")
     if 'length' not in item.keys():
-        raise AttributeError
+        raise AttributeError("Key not found. Check case")
     if type(item['length']) is not int:
         raise TypeError("length is not int")
     in_minutes = round(item['length'] / 60, 3)
@@ -27,6 +27,16 @@ class RightcallTable:
                                        region_name=self.region)
         self.table_name = table_name
         self.table = self.dynamodb.Table(self.table_name)
+
+    def sanitize_data(self, data):
+        if type(data) is not dict:
+            raise TypeError("Incorrect type. Function only accepts 'dict' objects")
+        clean_data = {}
+        clean_data['referenceNumber'] = data['Name']
+        clean_data['skill'] = data['Skill']
+        clean_data['length'] = data['Length']
+        clean_data['date'] = data['Date']
+        return clean_data
 
     def batch_write(self, data):
         with self.table.batch_writer() as batch:
