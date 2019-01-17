@@ -25,7 +25,7 @@ def write_csv_to_db(csv_filepath, table):
     records_list = json.loads(file.to_json(orient='records'))
     print(len(records_list))
     for call in records_list:
-        if not check_exists(call['Name'], table):
+        if not get_db_item(call['Name'], table, check_exists=True):
             put_call(call, table)
         else:
             # update existing db
@@ -50,9 +50,9 @@ def put_call(call, table, minutes=False):
         return response
 
 
-def get_db_item(reference_number, table):
+def get_db_item(reference_number, table, check_exists=False):
     if '.json' in reference_number:
-        raise ValueError('reference_number is wrong format: contains ".json"')
+        raise Exception('reference_number is wrong format: contains ".json"')
     module_logger.debug(f"get_db_item called with {reference_number} on {table}")
     try:
         response = table.get_item(Key={
@@ -63,28 +63,14 @@ def get_db_item(reference_number, table):
     else:
         try:
             item = response['Item']
-            module_logger.debug(f"Successful. Returning {type(item)}")
-            return item
+            module_logger.debug(f"Item exists")
+            if check_exists:
+                return
+            else:
+                module_logger.debug(f"Successful. Returning {type(item)}")
+                return item
         except KeyError:
             module_logger.error(f"Item not in db: {reference_number}")
-            return False
-
-
-def check_exists(reference_number, table):
-    if '.json' in reference_number:
-        raise ValueError('reference_number is wrong format: contains ".json"')
-    try:
-        response = table.get_item(Key={
-            'referenceNumber': reference_number})
-
-    except Exception as e:
-            print(e.response['Error']['Message'])
-    else:
-        try:
-            response['Item']
-            return True
-        except KeyError:
-            print("Item not in db")
             return False
 
 
