@@ -147,3 +147,6 @@ lambda_functions/rightcall/*
 !lambda_functions/rightcall/metadata_to_dynamodb.py
 !lambda_functions/rightcall/dynamodb_tools.py
 !lambda_functions/rightcall/aws_elasticsearch.py
+
+lambda_functions/es-access-test/*
+!lambda_functions/es-access-test/lambda_function.py
