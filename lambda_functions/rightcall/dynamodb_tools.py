@@ -16,6 +16,12 @@ class RightcallTable:
         self.table_name = table_name
         self.table = self.dynamodb.Table(self.table_name)
 
+    def __repr__(self):
+        return f"rtable = dynamodb_tools.RightcallTable('{REGION}'', '{TABLE_NAME}')"
+
+    def __str__(self):
+        return self.table_name
+
     def sanitize_data(self, data):
         if type(data) is not dict:
             raise TypeError(f"Incorrect type. Function only accepts 'dict' objects \
@@ -81,3 +87,4 @@ class RightcallTable:
 if __name__ == '__main__':
     rtable = RightcallTable(REGION, TABLE_NAME)
     print(rtable.table.creation_date_time)
+    print(rtable)

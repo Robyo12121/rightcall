@@ -108,7 +108,7 @@ def get_all_refs_from_s3_objects(bucket_name):
     Input: <string> 'comprehend.rightcall'
     Output: <list> ['b310f08130r3', 'c210935j22239', ...]
     """
-    logger.info(f"Getting objects from {BUCKET}")
+    logger.info(f"Getting objects from {bucket_name}")
     keys = s3.list_objects_v2(Bucket=bucket_name)
     logger.debug(f"Received {len(keys['Contents'])} objects from {bucket_name}")
     list_of_reference_numbers = []
@@ -119,6 +119,12 @@ def get_all_refs_from_s3_objects(bucket_name):
 
 
 def update_existing_items(BUCKET):
+    """Given a bucket name - for all files
+        in that bucket:
+            - load the item
+            - sanitize it for elasticsearch index
+            - the call es.update with to update the
+              current doc with that ref number"""
     refs = get_all_refs_from_s3_objects(BUCKET)
     # get_meta_data = []
     for i, call_record in enumerate(refs):
