@@ -2,6 +2,21 @@ import requests
 from requests_aws4auth import AWS4Auth
 import boto3
 import json
+import logging
+import decimal
+
+module_logger = logging.getLogger('rightcall.elasticsearch_tools')
+
+
+# Helper class to convert a DynamoDB item to JSON.
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            if abs(o) % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
 
 
 class Elasticsearch:
@@ -16,35 +31,53 @@ class Elasticsearch:
     def put_item(self, doc_id, item):
         method = 'PUT'
         url = self.base_url + '/' + '_doc' + '/' + doc_id
-        print(url)
         return self.make_request(method, url, item)
 
     def get_item(self, doc_id):
         method = 'GET'
         url = self.base_url + '/' + '_doc' + '/' + doc_id
-        print(url)
         return self.make_request(method, url)
 
     def search(self, query):
+        """Search index using query
+        INPUT: expects elasticsearch query in full.
+        OUTPUT: list of dicts each containing a search hit
+        """
         url = self.base_url + '/_search'
         method = 'GET'
         results = json.loads(self.make_request(method, url, query)['body'])
         hits = [item['_source'] for item in results['hits']['hits']]
         return hits
 
+    def search_by_ref(self, referenceNumber):
+        if '.json' in referenceNumber:
+            module_logger.error(f"{self.search_by_ref.__name__}: '.json' found in {referenceNumber}")
+            raise ValueError(f"{self.search_by_ref.__name__}: {referenceNumber} is wrong format: contains '.json'")
+        query = {"query": {"match": {"referenceNumber": referenceNumber}}}
+        module_logger.info(f"Query: {query}")
+        hits = self.search(query)
+        module_logger.debug(hits)
+        if len(hits) > 1:
+            module_logger.warning(f"{self.search_by_ref.__name__}: More than one hit found!")
+        if hits is None:
+            module_logger.error(f"{self.search_by_ref.__name__}: No hits: {hits}")
+            raise Exception(f"{self.search_by_ref.__name__}: Nothing found!")
+        if type(hits[0]) is not dict:
+            module_logger.error(f"Return value is not a dictionary!")
+            raise ValueError(f"{self.search_by_ref.__name__}: Return value is not a dictionary!")
+        return hits[0]
+
     def get_hit_fields(self, es_resp_obj_dict):
         """Returns a list of they fields in an elasticsearch search response
             hit object."""
-        if es_resp_obj_dict['hits']['hits']:
-            fields = [key for key in es_resp_obj_dict['hits']['hits'][0]['_source'].keys()]
-        else:
-            return []
-        return fields
+        return es_resp_obj_dict.keys()
 
     def make_request(self, method, url, data=None):
+        module_logger.debug(f"{self.make_request.__name__} called with {method}, {url}, {data}")
         headers = {"Content-Type": "application/json"}
-        r = requests.request(method, url, auth=self.awsauth, headers=headers, data=json.dumps(data))
-        response = {"statusCode": 200,
+        r = requests.request(method, url, auth=self.awsauth, headers=headers, data=json.dumps(data, cls=DecimalEncoder))
+
+        response = {"statusCode": r.status_code,
                     "headers": {"Access-Control-Allow-Origin": '*'},
                     "isBase64Encoded": False}
         response['body'] = r.text
@@ -59,7 +92,7 @@ class Elasticsearch:
         try:
             self.put_item(data['referenceNumber'], data)
         except Exception as e:
-            # module_logger.error(e)
+            module_logger.error(e)
             raise e
         else:
             return True
@@ -70,9 +103,12 @@ class Elasticsearch:
         if '.json' in referenceNumber:
             raise ValueError(f'{referenceNumber} is wrong format: contains ".json"')
         result = json.loads(self.get_item(referenceNumber)['body'])
+        module_logger.debug(f"exists: {result}")
         if result['found']:
+            module_logger.debug("exists: Returning True")
             return True
         else:
+            module_logger.debug("exists: Returning False")
             return False
 
     def fully_populated_in_elasticsearch(self, referenceNumber):
@@ -82,39 +118,40 @@ class Elasticsearch:
         Returns boolean
         """
         # Query the index for the document associated with that reference number
-        resp = self.search(referenceNumber)
+        resp = self.search_by_ref(referenceNumber)
         # Check what fields the doc has (all call metadata or not?)
 
-        db_meta_data_fields = ['date', 'length', 'skill']
-        es_fields = self.get_hit_fields(resp)
-
-        if set(db_meta_data_fields).issubset(set(es_fields)):
-            # module_logger.debug(f"All: {db_meta_data_fields} contained in {es_fields}")
+        data_fields = ['skill', 'referenceNumber', 'date', 'sentiment', 'keyPhrases', 'promotion', 'text', 'length', 'entities']
+        # es_fields = self.get_hit_fields(resp)
+        # module_logger.debug(es.fields)
+        if set(data_fields).issubset(set(resp.keys())):
+            module_logger.debug(f"All fields present")
             return True
         else:
-            # module_logger.debug(f"""{referenceNumber} elasticsearch document missing
-            #     one or more fields from {db_meta_data_fields}""")
+            module_logger.warning(f"Missing {set(data_fields).difference(set(resp.keys()))} from {data_fields}")
             return False
 
     def rename(self, dictionary):
         """Receives a dictionary and renames replaces any keys
         that also appear in the 'fields' dictionary with the appropriate
         value"""
-        # module_logger.debug(f"rename called with {dictionary.keys()}")
-        fields = {'ref': 'referenceNumber',
-                  'reference_number': 'referenceNumber',
-                  'promo': 'promotion',
-                  'key_phrases': 'keyPhrases',
-                  'keyphrases': 'keyPhrases'}
+        module_logger.debug(f"rename called with {dictionary.keys()}")
+        mapping = {
+            'ref': 'referenceNumber',
+            'reference_number': 'referenceNumber',
+            'promo': 'promotion',
+            'key_phrases': 'keyPhrases',
+            'keyphrases': 'keyPhrases'}
+
         if type(dictionary) is not dict:
-            # module_logger.error("input is not dictionary. ERROR")
+            module_logger.error("input is not dictionary. ERROR")
             raise TypeError("input is not dictionary. ERROR")
 
         for field in dictionary.keys():
-            if field in fields.keys():
-                # module_logger.debug(f"Renaming {field} to {fields[field]}")
-                dictionary[fields[field]] = dictionary[field]
-                # module_logger.debug(f"Deleting {field}")
+            if field in mapping.keys():
+                module_logger.debug(f"Renaming {field} to {mapping[field]}")
+                dictionary[mapping[field]] = dictionary[field]
+                module_logger.debug(f"Deleting {field}")
                 del dictionary[field]
         return dictionary
 

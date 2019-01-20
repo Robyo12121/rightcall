@@ -10,7 +10,7 @@ if __name__ == '__main__':
     module_logger = logging.getLogger('S3')
     module_logger.setLevel(logging.DEBUG)
 else:
-    module_logger = logging.getLogger('Rightcall.s3')
+    module_logger = logging.getLogger('rightcall.s3')
 
 bucket_name = 'mp3.rightcall'
 
@@ -21,7 +21,7 @@ def get_first_matching_item(partial_key, bucket_name):
     s3 = boto3.client('s3')
     module_logger.debug(f"Getting list of items from {bucket_name}")
     keys = s3.list_objects_v2(Bucket=bucket_name)
-    module_logger.debug(f"Received {type(keys)} from {bucket_name}")
+    module_logger.debug(f"Received {len(keys)} items from {bucket_name}")
     module_logger.debug(f"Looking for match of {partial_key} in {type(keys)}")
     for key in keys['Contents']:
         if partial_key in key['Key']:

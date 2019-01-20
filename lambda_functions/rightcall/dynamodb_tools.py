@@ -5,8 +5,6 @@ import logging
 TABLE_NAME = 'rightcall_metadata'
 REGION = 'eu-west-1'
 
-logger = logging.getLogger(__name__)
-
 
 class RightcallTable:
     def __init__(self, region, table_name):
@@ -15,6 +13,7 @@ class RightcallTable:
                                        region_name=self.region)
         self.table_name = table_name
         self.table = self.dynamodb.Table(self.table_name)
+        self.logger = logging.getLogger('rightcall.dynamodb_tools')
 
     def __repr__(self):
         return f"rtable = dynamodb_tools.RightcallTable('{REGION}'', '{TABLE_NAME}')"
@@ -65,22 +64,24 @@ class RightcallTable:
         """Access item in database. Return it, unless check_exists flag is True"""
         if '.json' in reference_number:
             raise Exception('reference_number is wrong format: contains ".json"')
-        logger.debug(f"get_db_item called with {reference_number}")
+        self.logger.debug(f"get_db_item called with {reference_number}")
         try:
             response = self.table.get_item(Key={
                 'referenceNumber': reference_number})
+
         except Exception as e:
-                logger.error(f"Error: {e.response['Error']['Message']}")
+                self.logger.error(f"Error: {e.response['Error']['Message']}")
         else:
-            logger.debug(f"Item exists")
-            if check_exists:
-                    return
+            self.logger.debug(f"DB response: {response}")
+
+            if check_exists and response.get('Item') is not None:
+                    return True
             try:
                 item = response['Item']
-                logger.debug(f"Successful. Returning {type(item)}")
+                self.logger.debug(f"Successful. Returning {type(item)}")
                 return item
             except KeyError:
-                logger.error(f"Item not in db: {reference_number}")
+                self.logger.info(f"Item not in db: {reference_number}")
                 return False
 
 
