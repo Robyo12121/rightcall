@@ -62,6 +62,7 @@ def get_stems(sentence):
 
 
 def get_data(path):
+    logger = logging.getLogger(__name__)
     try:
         with open(path, 'r') as file:
             data = json.load(file)
