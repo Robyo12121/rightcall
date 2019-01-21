@@ -25,25 +25,74 @@ class Elasticsearch:
     def __init__(self, host, index, region, auth=None):
         self.host = host
         self.index = index
-        self.base_url = 'https://' + self.host + '/' + self.index
+        self.base_url = 'https://' + self.host + '/'
+        self.index_url = self.base_url + self.index
         self.awsauth = auth
+
+    def make_request(self, method, url, data=None):
+        module_logger.info(f"{self.make_request.__name__} called with {method}, {url}")
+        module_logger.debug(f"...with data: {data}")
+        headers = {"Content-Type": "application/json"}
+        r = requests.request(method, url, auth=self.awsauth, headers=headers, data=json.dumps(data, cls=DecimalEncoder))
+
+        # response = {"statusCode": r.status_code,
+        #             "headers": {"Access-Control-Allow-Origin": '*'},
+        #             "isBase64Encoded": False}
+        # response['body'] = r.json()
+        response = r.json()
+        module_logger.debug(f"Response: {response}")
+        return response
 
     def put_item(self, doc_id, item):
         method = 'PUT'
-        url = self.base_url + '/' + '_doc' + '/' + doc_id
+        url = self.index_url + '/' + '_doc' + '/' + doc_id
         return self.make_request(method, url, item)
 
     def get_item(self, doc_id):
         method = 'GET'
-        url = self.base_url + '/' + '_doc' + '/' + doc_id
+        url = self.index_url + '/' + '_doc' + '/' + doc_id
         return self.make_request(method, url)
+
+    def create_index(self, name, mapping=None):
+        """Create an elasticsearch index with the given name, mapping and settings
+        INPUT: (str) name - name of index
+               (dict) mapping - mapping for fields in index
+               (dict) settings - settings for index
+        """
+        # Check if index already exists with that name
+        url = self.base_url + name
+        response = self.make_request('GET', url)
+        # if name in response['body'].keys():
+        if name in response.keys():
+            module_logger.warning(f"Index {name} already exists. Aborting...")
+            return False
+        module_logger.debug(f"Creating {name} index...")
+        data = {}
+        if mapping is not None:
+            data = mapping
+        response = self.make_request('PUT', url, data=data)
+        module_logger.debug(response)
+        return response
+
+    def reindex(self, old_index_name, new_index_name):
+        url = self.base_url + '_reindex'
+        data = {}
+        data['source'] = {'index': old_index_name}
+        data['dest'] = {'index': new_index_name}
+        response = self.make_request('POST', url, data=data)
+        return response
+
+    def delete_index(self, index_name):
+        url = self.base_url + index_name
+        response = self.make_request('DELETE', url)
+        return response
 
     def search(self, query):
         """Search index using query
         INPUT: expects elasticsearch query in full.
         OUTPUT: list of dicts each containing a search hit
         """
-        url = self.base_url + '/_search'
+        url = self.index_url + '/_search'
         method = 'GET'
         results = json.loads(self.make_request(method, url, query)['body'])
         hits = [item['_source'] for item in results['hits']['hits']]
@@ -66,22 +115,6 @@ class Elasticsearch:
             module_logger.error(f"Return value is not a dictionary!")
             raise ValueError(f"{self.search_by_ref.__name__}: Return value is not a dictionary!")
         return hits[0]
-
-    def get_hit_fields(self, es_resp_obj_dict):
-        """Returns a list of they fields in an elasticsearch search response
-            hit object."""
-        return es_resp_obj_dict.keys()
-
-    def make_request(self, method, url, data=None):
-        module_logger.debug(f"{self.make_request.__name__} called with {method}, {url}, {data}")
-        headers = {"Content-Type": "application/json"}
-        r = requests.request(method, url, auth=self.awsauth, headers=headers, data=json.dumps(data, cls=DecimalEncoder))
-
-        response = {"statusCode": r.status_code,
-                    "headers": {"Access-Control-Allow-Origin": '*'},
-                    "isBase64Encoded": False}
-        response['body'] = r.text
-        return response
 
     def load_call_record(self, db_item, s3_item):
         """Takes two dictionaries (one from dynamo database record,
@@ -155,8 +188,46 @@ class Elasticsearch:
                 del dictionary[field]
         return dictionary
 
+    def reindex_with_correct_mappings(self, MAPPING):
+        """ Function to use incase mapping of index gets
+        messed up.
+        Creates a tempoarary index with a correct mapping,
+            Reindexs the documents from the old index to temp one.
+            Deletes the original index,
+            Recreates the old index with strict mapping
+            Reindexes temp index to old index
+            Deletes temp index
+
+            Needs some error checking"""
+        temp_name = self.index + '_temp'
+        module_logger.info(f"Creating index with name: {temp_name}")
+        self.create_index(temp_name, MAPPING)
+        module_logger.info(f"Reindexing {self.index} into {temp_name}")
+        self.reindex(self.index, temp_name)
+        module_logger.info(f"Deleting: {self.index}")
+        self.delete_index(self.index)
+        module_logger.info(f"Creating index {self.index} with correct mappings")
+        self.create_index(self.index, MAPPING)
+        module_logger.info(f"Reindexing {temp_name} into {self.index}")
+        self.reindex(temp_name, self.index)
+        module_logger.info(f"Deleting: {temp_name}")
+        self.delete_index(temp_name)
+
+    def get_hit_fields(self, es_resp_obj_dict):
+        """Returns a list of they fields in an elasticsearch search response
+            hit object."""
+        return es_resp_obj_dict.keys()
+
 
 if __name__ == '__main__':
+    module_logger = logging.getLogger('elasticsearch_tools')
+    module_logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(formatter)
+    module_logger.addHandler(ch)
+
     service = 'es'
     REGION = 'eu-west-1'
     credentials = boto3.Session().get_credentials()
@@ -166,56 +237,21 @@ if __name__ == '__main__':
                        service,
                        session_token=credentials.token)
     es = Elasticsearch('search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com', "rightcall", "eu-west-1", auth=awsauth)
-
-    doc = {
-        "referenceNumber": "c47a6eTVd00882",
-        "text": "Mhm, hello, you reached their service. This i'm speaking. Can you provide me your full name or previous-ticket-number, please, um, and the ticket-number h i n c, just a second, please. Sorry, just a second, please i n c one free 1 3, 6 1 7 9 1. Okay, just a second while i check the stick it to see. So you need a password. Reset for the s a p okay, just the second, ma'am. So ah, oh, oh, no, very sick. Your boss word. Mhm! Yeah. Yeah. Hm. Yeah. Yeah. Yeah. Oh! Mhm! Okay. Yeah. Yeah, okay, yeah. Okay, okay. Mhm, mhm. Your user name for some copies is devorah n t e e r e u x. And yeah. Yeah, okay, yeah, yeah. Hm. Okay, i am locked your account. Thank you. Need the ah, also, password reset. Okay, okay, just a second. Oh! Oh! Oh, yeah. Yeah, yeah. So, uh, your new temporary password is. Have i want to free four with the capital ? T can you try to be very much ? O.K. ? Oh! Yeah, okay. Yeah. Mhm, mhm. Yeah. Oh, yeah. Yeah, okay, thank you. Okay, would you like to write the ticket-number ? No that's. Okay, thank you very much, and have a lot of the day. Bye. Okay.",
-        "sentiment": "neutral",
-        "promotion": "fail",
-        "entities": [
-            "second",
-            "one",
-            "1",
-            "3",
-            "6",
-            "7",
-            "9",
-            "four"
-        ],
-        "keyphrases": [
-            "Mhm",
-            "their service",
-            "This i",
-            "your full name",
-            "previous-ticket-number",
-            "um",
-            "the ticket-number h i n c",
-            "just a second",
-            "i n c",
-            "one free 1 3, 6 1 7 9 1",
-            "the stick",
-            "a password",
-            "Reset",
-            "the s a p",
-            "just the second",
-            "ma'am",
-            "Your boss word",
-            "mhm",
-            "Your user name",
-            "some copies",
-            "devorah n t e e r e u x",
-            "yeah",
-            "your account",
-            "the ah",
-            "password reset",
-            "your new temporary password",
-            "the capital",
-            "O.K.",
-            "the ticket-number",
-            "a lot",
-            "the day"
-        ]
+    mapping = {
+        "mappings": {
+            "_doc": {
+                "properties": {
+                    "referenceNumber": {"type": "keyword"},
+                    "text": {"type": "text"},
+                    "sentiment": {"type": "keyword"},
+                    "promotion": {"type": "keyword"},
+                    "entities": {"type": "keyword"},
+                    "keyPhrases": {"type": "keyword"},
+                    "date": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss"},
+                    "skill": {"type": "keyword"},
+                    "length": {"type": "integer"}
+                }
+            }
+        }
     }
 
-    result = es.exists(doc['referenceNumber'])
-    print(result)

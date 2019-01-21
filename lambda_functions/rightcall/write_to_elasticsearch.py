@@ -9,21 +9,16 @@ import dynamodb_tools
 from requests_aws4auth import AWS4Auth
 
 LOGLEVEL = 'DEBUG'
-
 # Logging
 levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 if LOGLEVEL not in levels:
     raise ValueError(f"Invalid log level choice {LOGLEVEL}")
 logger = logging.getLogger('rightcall')
 logger.setLevel(LOGLEVEL)
-# create console handler and set level to LOGLEVEL
 ch = logging.StreamHandler()
 ch.setLevel(LOGLEVEL)
-# create formatter
 formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
-# add formatter to ch
 ch.setFormatter(formatter)
-# add ch to logger
 logger.addHandler(ch)
 
 region = 'eu-west-1'
@@ -31,15 +26,17 @@ dynamodb_table_name = 'rightcall_metadata'
 BUCKET = 'comprehend.rightcall'
 s3 = boto3.client('s3')
 credentials = boto3.Session().get_credentials()
-awsauth = AWS4Auth(credentials.access_key,
-                   credentials.secret_key,
-                   region,
-                   'es',
-                   session_token=credentials.token)
-es = elasticsearch_tools.Elasticsearch('search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com',
-                                       "rightcall",
-                                       region,
-                                       auth=awsauth)
+awsauth = AWS4Auth(
+    credentials.access_key,
+    credentials.secret_key,
+    region,
+    'es',
+    session_token=credentials.token)
+es = elasticsearch_tools.Elasticsearch(
+    'search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com',
+    "rightcall",
+    region,
+    auth=awsauth)
 rtable = dynamodb_tools.RightcallTable(region, dynamodb_table_name)
 
 
@@ -120,14 +117,6 @@ def add_new_or_incomplete_items(bucket_name, es, table):
         # If not, get object from s3 in order to construct object to index
         else:
             logger.info(f"{ref} not in {es.index} index")
-            # logger.info('---------------------------------------')
-            # logger.info(f"Checking {bucket_name} bucket for {call_record['Name']}")
-            # s3_item = s3py.get_first_matching_item(ref, bucket_name)
-            # logger.info(f"{ref} found in {bucket_name}")
-            # logger.info('---------------------------------------')
-            # logger.info(f"Preparing data: old data: {s3_item.keys()}")
-            # s3_item = es.rename(s3_item)
-            # logger.info(f"Cleaned data: {s3_item.keys()}")
 
         logger.info(f"Checking {es.index} database for missing metadata")
         db_item = rtable.get_db_item(ref)
@@ -148,9 +137,7 @@ def add_new_or_incomplete_items(bucket_name, es, table):
             logger.info(f"Cleaned data: {s3_item.keys()}")
         logger.info(f"Combining data for {ref} from {rtable} and {bucket_name} and adding to {es.index} index")
 
-        result = es.load_call_record(
-            db_item,
-            s3_item)
+        result = es.load_call_record(db_item, s3_item)
         if result:
             logger.info(f"{ref} successfully added to {es.index} index")
         else:
