@@ -7,7 +7,7 @@ from comprehend_to_elasticsearch import Comp2Elas
 def rightcall():
     pass
 
-
+# Elasticsearch command
 @rightcall.group()
 @click.option('--debug/--no-debug', default=False)
 @click.pass_context
@@ -42,6 +42,18 @@ def update(comp2elas, source):
     click.echo(f'Getting files from: {source}')
     unknown_refs = comp2elas.update_existing_items(source)
     click.echo(unknown_refs)
+
+
+# Retrieve Command
+@rightcall.group()
+def retrieve():
+    pass
+
+
+@retrieve.command()
+@click.option('--ref', 'referenceNumber', type=str, help="Specify reference number string of call to retrieve")
+def call(referenceNumber):
+    click.echo(referenceNumber)
 
 
 if __name__ == '__main__':
