@@ -21,24 +21,6 @@ formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-region = 'eu-west-1'
-dynamodb_table_name = 'rightcall_metadata'
-BUCKET = 'comprehend.rightcall'
-s3 = boto3.client('s3')
-credentials = boto3.Session().get_credentials()
-awsauth = AWS4Auth(
-    credentials.access_key,
-    credentials.secret_key,
-    region,
-    'es',
-    session_token=credentials.token)
-es = elasticsearch_tools.Elasticsearch(
-    'search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com',
-    "rightcall",
-    region,
-    auth=awsauth)
-rtable = dynamodb_tools.RightcallTable(region, dynamodb_table_name)
-
 
 def get_reference_number_from_object_name(object_name_string):
     """ Given s3 object name: 'e23413582523--QUIDP.json' or 'e23413582523P.json':
@@ -147,5 +129,40 @@ def add_new_or_incomplete_items(bucket_name, es, table):
 
 
 if __name__ == '__main__':
+    region = 'eu-west-1'
+    dynamodb_table_name = 'rightcall_metadata'
+    BUCKET = 'comprehend.rightcall'
+    s3 = boto3.client('s3')
+    credentials = boto3.Session().get_credentials()
+    awsauth = AWS4Auth(
+        credentials.access_key,
+        credentials.secret_key,
+        region,
+        'es',
+        session_token=credentials.token)
+    es = elasticsearch_tools.Elasticsearch(
+        'search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com',
+        region,
+        index='rightcall',
+        auth=awsauth)
+    rtable = dynamodb_tools.RightcallTable(region, dynamodb_table_name)
+    mapping = {
+        "mappings": {
+            "_doc": {
+                "properties": {
+                    "referenceNumber": {"type": "keyword"},
+                    "text": {"type": "text"},
+                    "sentiment": {"type": "keyword"},
+                    "promotion": {"type": "keyword"},
+                    "entities": {"type": "keyword"},
+                    "keyPhrases": {"type": "keyword"},
+                    "date": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss"},
+                    "skill": {"type": "keyword"},
+                    "length": {"type": "integer"}
+                }
+            }
+        }
+    }
+    es.create_index('demo', mapping=mapping, set_as_current_index=True)
     calls_missing_meta_data = add_new_or_incomplete_items(BUCKET, es, rtable)
     logger.info(f"Refs without metadata {calls_missing_meta_data}")

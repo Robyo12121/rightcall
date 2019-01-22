@@ -20,7 +20,7 @@ load_dotenv()
 username = os.environ.get('PROSODIE_USERNAME')
 passwd = os.environ.get('PROSODIE_PASSWORD')
 print(sys.version)
-driver = r'C:\Users\RSTAUNTO\Desktop\chromedriver.exe'
+driver = r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe'
 
 
 def change_date_format(date):
@@ -352,7 +352,7 @@ def loop_through_table(s):
 if __name__ == '__main__':
     s = setup()
 
-    download_mp3_by_csv(s, username, passwd, 'data/csvs/to_download.csv', 'data/mp3s/')
+    download_mp3_by_csv(s, username, passwd, 'data/csvs/metadata.csv', 'data/mp3s/demo/')
 
 #    d = datetime.datetime.now()
 #    s = login(s, username, passwd)

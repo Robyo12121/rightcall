@@ -53,5 +53,4 @@ def Metadata2Dynamodb(bucket, filename, tablename, region='eu-west-1'):
 
 if __name__ == '__main__':
     result = Metadata2Dynamodb(DEMO, filename, TABLE_NAME, region=REGION)
-    print(result['success'])
-
+    print(result)

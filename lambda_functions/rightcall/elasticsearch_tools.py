@@ -22,7 +22,7 @@ class DecimalEncoder(json.JSONEncoder):
 class Elasticsearch:
     """Custom Elasticsearch to abstract away talking to elasticsearch
     domain. Uses HTTP requests."""
-    def __init__(self, host, index, region, auth=None):
+    def __init__(self, host, region, index=None, auth=None):
         self.host = host
         self.index = index
         self.base_url = 'https://' + self.host + '/'
@@ -53,25 +53,39 @@ class Elasticsearch:
         url = self.index_url + '/' + '_doc' + '/' + doc_id
         return self.make_request(method, url)
 
-    def create_index(self, name, mapping=None):
+    def create_index(self, name, mapping=None, set_as_current_index=False):
         """Create an elasticsearch index with the given name, mapping and settings
         INPUT: (str) name - name of index
                (dict) mapping - mapping for fields in index
-               (dict) settings - settings for index
+               (bool) set_as_current_index - set this index as the current working index
         """
         # Check if index already exists with that name
         url = self.base_url + name
         response = self.make_request('GET', url)
-        # if name in response['body'].keys():
         if name in response.keys():
-            module_logger.warning(f"Index {name} already exists. Aborting...")
-            return False
+            module_logger.warning(f"Index {name} already exists. Aborting create index call...")
+            if set_as_current_index:
+                module_logger.warning(f"Current working index changed from {self.index} to {name}")
+                self.index = name
+                self.index_url = self.base_url + self.index
+            else:
+                module_logger.warning(f"Current working index remains: {self.index}")
+                raise Exception("Working index did not change when requested")
+            return
+
         module_logger.debug(f"Creating {name} index...")
         data = {}
         if mapping is not None:
             data = mapping
         response = self.make_request('PUT', url, data=data)
         module_logger.debug(response)
+        if set_as_current_index and response['acknowledged']:
+            module_logger.warning(f"Current working index changed from {self.index} to {name}")
+            self.index = name
+            self.index_url = self.base_url + self.index
+        else:
+            module_logger.warning(f"Current working index remains: {self.index}")
+            raise Exception("Working index did not change when requested")
         return response
 
     def reindex(self, old_index_name, new_index_name):
@@ -94,7 +108,7 @@ class Elasticsearch:
         """
         url = self.index_url + '/_search'
         method = 'GET'
-        results = json.loads(self.make_request(method, url, query)['body'])
+        results = self.make_request(method, url, query)
         hits = [item['_source'] for item in results['hits']['hits']]
         return hits
 
@@ -108,7 +122,7 @@ class Elasticsearch:
         module_logger.debug(hits)
         if len(hits) > 1:
             module_logger.warning(f"{self.search_by_ref.__name__}: More than one hit found!")
-        if hits is None:
+        if not hits:
             module_logger.error(f"{self.search_by_ref.__name__}: No hits: {hits}")
             raise Exception(f"{self.search_by_ref.__name__}: Nothing found!")
         if type(hits[0]) is not dict:
@@ -135,8 +149,8 @@ class Elasticsearch:
         Returns boolean"""
         if '.json' in referenceNumber:
             raise ValueError(f'{referenceNumber} is wrong format: contains ".json"')
-        result = json.loads(self.get_item(referenceNumber)['body'])
-        module_logger.debug(f"exists: {result}")
+        result = self.get_item(referenceNumber)
+        module_logger.debug(f"Exists: {result}")
         if result['found']:
             module_logger.debug("exists: Returning True")
             return True
@@ -221,7 +235,7 @@ class Elasticsearch:
 
 if __name__ == '__main__':
     module_logger = logging.getLogger('elasticsearch_tools')
-    module_logger.setLevel(logging.INFO)
+    module_logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
@@ -254,4 +268,5 @@ if __name__ == '__main__':
             }
         }
     }
+    response = es.create_index('temp')
 
