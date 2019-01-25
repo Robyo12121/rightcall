@@ -7,6 +7,7 @@ from comprehend_to_elasticsearch import Comp2Elas
 def rightcall():
     pass
 
+
 # Elasticsearch command
 @rightcall.group()
 @click.option('--debug/--no-debug', default=False)
@@ -58,19 +59,3 @@ def call(referenceNumber):
 
 if __name__ == '__main__':
     rightcall()
-
-"""
-CLI Tool Design:
-
-Want to be able to run commonly used functions from cli to make things easier.
-Be able to use different arguments, and get some results/feedback/output about performance.
-
-Things I want to be able to do:
-
-    Process items from comprehend bucket, add db metadata to it and add to ES index
-    automatically in one step. Both new items (that don't exist in Index yet) and update
-    existing items.
-
-    'elasticsearch add/update <source-bucket>/<source list> <dest-index>'
-
-"""
