@@ -96,6 +96,10 @@ def cleanup_bad_docs(es, dryrun=True):
     return response
 
 
+def promo_to_es(path):
+    pass
+
+
 if __name__ == '__main__':
     region = 'eu-west-1'
     BUCKET = 'comprehend.rightcall'
@@ -114,10 +118,13 @@ if __name__ == '__main__':
     logger = setup_logging('DEBUG')
 
     logger.info(cleanup_bad_docs(es))
-    # mapping_dict = {'ISRO_TEVA_US_EN': 'US',
-    #                 'ISRO_TEVA_US_VIP_EN': 'US',
-    #                 'ISRO_TEVA_GB_EN': 'GB',
-    #                 'ISRO_TEVA_GB_P1_EN': 'GB',
-    #                 'ISRO_TEVA_IE_EN': 'IE'}
-    # search_query = {"from": 0, "size": 100, "query": {"match_all": {}}}
+    mapping_dict = {'ISRO_TEVA_US_EN': 'US',
+                    'ISRO_TEVA_US_VIP_EN': 'US',
+                    'ISRO_TEVA_GB_EN': 'GB',
+                    'ISRO_TEVA_GB_P1_EN': 'GB',
+                    'ISRO_TEVA_IE_EN': 'IE',
+                    'ISRO_TEVA_MLT_EN': 'MLT',
+                    'ISRO_TEVA_FIN_EN': 'FIN',
+                    'ISRO_TEVA_OOH_EN': 'Unknown'}
+    search_query = {"from": 0, "size": 100, "query": {"match": {"referenceNumber": "e7eb0fTOd10404"}}}
     # modify_by_search(es, search_query, skill_to_country, mapping_dict)

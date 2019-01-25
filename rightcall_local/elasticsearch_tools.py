@@ -34,11 +34,6 @@ class Elasticsearch:
         module_logger.debug(f"...with data: {data}")
         headers = {"Content-Type": "application/json"}
         r = requests.request(method, url, auth=self.awsauth, headers=headers, data=json.dumps(data, cls=DecimalEncoder))
-
-        # response = {"statusCode": r.status_code,
-        #             "headers": {"Access-Control-Allow-Origin": '*'},
-        #             "isBase64Encoded": False}
-        # response['body'] = r.json()
         response = r.json()
         module_logger.debug(f"Response: {response}")
         return response
@@ -235,7 +230,6 @@ class Elasticsearch:
         self.reindex(temp_name, self.index)
         module_logger.info(f"Deleting: {temp_name}")
         self.delete_index(temp_name)
-
 
 
 if __name__ == '__main__':
