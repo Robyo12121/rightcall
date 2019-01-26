@@ -6,11 +6,10 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Click',
-        ],
+        'Click'
+    ],
     entry_points='''
         [console_scripts]
-	rightcall=rightcall_local.rightcall:rightcall
-    ''',
+        rightcall=rightcall.rightcall:rightcall
+        ''',
 )
-        

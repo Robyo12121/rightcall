@@ -229,8 +229,8 @@ def write_to_csv(ref_list, path):
 
 if __name__ == '__main__':
     c2es = Comp2Elas('eu-west-1', 'http://localhost:8000', 'comprehend.rightcall', 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/', 'http://localhost:9200')
-##    json_data = parse_csv(CSV)
-##    get_meta_data = add_new_or_incomplete_items('comprehend.rightcall')
-    update_existing_items('comprehend.rightcall')
-##    if get_meta_data is not None:
-##        write_to_csv(get_meta_data, RC_DIR + '/data/csvs/'+ 'to_download.csv')
+#    json_data = parse_csv(CSV)
+#    get_meta_data = add_new_or_incomplete_items('comprehend.rightcall')
+#    update_existing_items('comprehend.rightcall')
+#    if get_meta_data is not None:
+#        write_to_csv(get_meta_data, RC_DIR + '/data/csvs/'+ 'to_download.csv')

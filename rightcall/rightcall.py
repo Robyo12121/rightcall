@@ -1,6 +1,6 @@
 #! /user/bin/python
 import click
-from comprehend_to_elasticsearch import Comp2Elas
+from rightcall import elasticsearch_tools
 
 
 @click.group()
@@ -10,19 +10,18 @@ def rightcall():
 
 # Elasticsearch command
 @rightcall.group()
-@click.option('--debug/--no-debug', default=False)
+@click.option('--host', 'host', type=str, required=False, help="URL of elasticsearch endpoint")
+@click.option('--index', 'index', type=str, required=False, help="Name of desired index")
+@click.option('--region', 'region', type=str, required=False, help="AWS region of elasticsearch endpoint")
 @click.pass_context
-def elasticsearch(ctx, debug):
-    if debug:
-        ctx.obj = Comp2Elas('eu-west-1', 'http://localhost:8000', 'comprehend.rightcall',
-                            'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/',
-                            'http://localhost:9200',
-                            loglevel='DEBUG')
-    else:
-        ctx.obj = Comp2Elas('eu-west-1', 'http://localhost:8000', 'comprehend.rightcall',
-                            'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/',
-                            'http://localhost:9200')
-    click.echo(f"Debug mode is {'on' if debug else 'off'}")
+def elasticsearch(ctx, host, index, region):
+    ctx.obj = elasticsearch_tools.Elasticsearch(host=host, region=region, index=index)
+
+
+@elasticsearch.command()
+@click.pass_context
+def inspect(ctx):
+    print(ctx.obj)
 
 
 @elasticsearch.command()
@@ -43,6 +42,13 @@ def update(comp2elas, source):
     click.echo(f'Getting files from: {source}')
     unknown_refs = comp2elas.update_existing_items(source)
     click.echo(unknown_refs)
+
+
+@elasticsearch.command()
+@click.argument('doc_id')
+def get_item(doc_id):
+    item = elasticsearch_tools.get_item(doc_id)
+    click.echo(f"{item}")
 
 
 # Retrieve Command

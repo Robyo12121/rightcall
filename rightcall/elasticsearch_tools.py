@@ -22,12 +22,22 @@ class DecimalEncoder(json.JSONEncoder):
 class Elasticsearch:
     """Custom Elasticsearch to abstract away talking to elasticsearch
     domain. Uses HTTP requests."""
-    def __init__(self, host, region, index=None, auth=None):
+    def __init__(self,
+                 host='search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com',
+                 region='eu-west-1',
+                 index='rightcall',
+                 auth=None):
         self.host = host
+        self.region = region
         self.index = index
-        self.base_url = 'https://' + self.host + '/'
-        self.index_url = self.base_url + self.index
+        if self.host is not None:
+            self.base_url = 'https://' + self.host + '/'
+        if self.host is not None and self.index is not None:
+            self.index_url = self.base_url + self.index
         self.awsauth = auth
+
+    def __str__(self):
+        return f"Host: {self.host}, Index: {self.index}, Region: {self.region}"
 
     def make_request(self, method, url, data=None):
         module_logger.info(f"{self.make_request.__name__} called with {method}, {url}")
@@ -249,7 +259,9 @@ if __name__ == '__main__':
                        REGION,
                        service,
                        session_token=credentials.token)
-    es = Elasticsearch('search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com', "rightcall", "eu-west-1", auth=awsauth)
+    # es = Elasticsearch('search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com', "rightcall", "eu-west-1", auth=awsauth)
+    es = Elasticsearch(None, None, None, None)
+    print(es)
     mapping = {
         "mappings": {
             "_doc": {
