@@ -1,11 +1,19 @@
 #! /user/bin/python
 import click
 from rightcall import elasticsearch_tools
+from rightcall import es_configure
+
+
+class Config(object):
+
+    def __init__(self):
+        self.es = elasticsearch_tools.Elasticsearch()
 
 
 @click.group()
-def rightcall():
-    pass
+@click.pass_context
+def rightcall(ctx):
+    ctx.obj = Config()
 
 
 # Elasticsearch command
@@ -15,13 +23,35 @@ def rightcall():
 @click.option('--region', 'region', type=str, required=False, help="AWS region of elasticsearch endpoint")
 @click.pass_context
 def elasticsearch(ctx, host, index, region):
-    ctx.obj = elasticsearch_tools.Elasticsearch(host=host, region=region, index=index)
+    if host is not None:
+        ctx.obj.es.host = host
+    if index is not None:
+        ctx.obj.es.index = index
+    if region is not None:
+        ctx.obj.es.region = region
+
+
+@elasticsearch.command()
+@click.pass_context
+def configure(ctx):
+    conf = es_configure.ESConfigure()
+    conf.run()
+    # host = str(input(f"HOST [{ctx.obj.es.host}]: "))
+    # if host is not None:
+    #     ctx.obj.es.host = host
+    # index = str(input(f"INDEX [{ctx.obj.es.index}]: "))
+    # if index is not None:
+    #     ctx.obj.es.index = index
+    # region = str(input(f"REGION [{ctx.obj.es.region}]: "))
+    # if region is not None:
+    #     ctx.obj.es.region = region
+
 
 
 @elasticsearch.command()
 @click.pass_context
 def inspect(ctx):
-    print(ctx.obj)
+    print(ctx.obj.es)
 
 
 @elasticsearch.command()
@@ -46,8 +76,9 @@ def update(comp2elas, source):
 
 @elasticsearch.command()
 @click.argument('doc_id')
-def get_item(doc_id):
-    item = elasticsearch_tools.get_item(doc_id)
+@click.pass_context
+def get_item(ctx, doc_id):
+    item = ctx.es.get_item(doc_id)
     click.echo(f"{item}")
 
 

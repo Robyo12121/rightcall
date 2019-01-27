@@ -1,1 +1,1 @@
-from .elasticsearch_tools import Elasticsearch
+from .cli import es_configure
