@@ -5,9 +5,10 @@ from rightcall import configure as cfg
 import configparser
 import os
 from pathlib import Path
-import requests
+# import requests
 from requests_aws4auth import AWS4Auth
 import boto3
+import json
 
 credentials = boto3.Session().get_credentials()
 
@@ -44,17 +45,8 @@ def rightcall(ctx):
 
 # Elasticsearch command
 @rightcall.group()
-@click.option('--host', 'host', type=str, required=False, help="URL of elasticsearch endpoint")
-@click.option('--index', 'index', type=str, required=False, help="Name of desired index")
-@click.option('--region', 'region', type=str, required=False, help="AWS region of elasticsearch endpoint")
-@click.pass_context
-def elasticsearch(ctx, host, index, region):
-    if host is not None:
-        ctx.obj.es.host = host
-    if index is not None:
-        ctx.obj.es.index = index
-    if region is not None:
-        ctx.obj.es.region = region
+def elasticsearch():
+    pass
 
 
 @elasticsearch.command()
@@ -97,6 +89,36 @@ def update(comp2elas, source):
 def get_item(ctx, doc_id):
     item = ctx.obj.es.get_item(doc_id)
     click.echo(f"{item}")
+
+
+@elasticsearch.command()
+@click.option('--document_id', type=str, required=True, help="referenceNumber/id of document")
+@click.option('--item', type=str, required=True, help="""Enclose JSON object in single quotes. eg. '{"referenceNumber": "012345678"}'""")
+@click.pass_context
+def put_item(ctx, document_id, item):
+    i = json.loads(item)
+    item = ctx.obj.es.put_item(document_id, i)
+    click.echo(f"{item}")
+
+
+@elasticsearch.command()
+@click.argument('query', type=str, required=True)
+@click.option('--return_metadata/--no-return_metadata', default=False)
+@click.pass_context
+def search(ctx, query, return_metadata):
+    q = json.loads(query)
+    results = ctx.obj.es.search(q, return_metadata=return_metadata)
+    click.echo(f"{results}")
+
+
+@elasticsearch.command()
+@click.argument('query', type=str, required=True)
+@click.option('--dryrun/--no-dryrun', default=True)
+@click.pass_context
+def delete_by_query(ctx, query, dryrun):
+    q = json.loads(query)
+    result = ctx.obj.es.delete_by_query(q, dryrun=dryrun)
+    click.echo(result)
 
 
 # Retrieve Command

@@ -142,6 +142,7 @@ class Elasticsearch:
         if dryrun:
             response = self.search(query)
             module_logger.info(f"Dryrun: Delete :{response}")
+            return f"(dryrun): Delete {response}"
         else:
             response = self.make_request(method, url, query)
         return response
