@@ -1,13 +1,39 @@
 #! /user/bin/python
 import click
 from rightcall import elasticsearch_tools
-from rightcall import es_configure
+from rightcall import configure as cfg
+import configparser
+import os
+from pathlib import Path
+import requests
+from requests_aws4auth import AWS4Auth
+import boto3
+
+credentials = boto3.Session().get_credentials()
 
 
 class Config(object):
 
     def __init__(self):
-        self.es = elasticsearch_tools.Elasticsearch()
+        data = self.read_config('elasticsearch')
+        self.es = elasticsearch_tools.Elasticsearch(
+            host=data['host'],
+            index=data['index'],
+            region=data['region'],
+            auth=AWS4Auth(credentials.access_key,
+                          credentials.secret_key,
+                          data['region'],
+                          'es',
+                          session_token=credentials.token))
+
+    def read_config(self, header):
+        self.parser = configparser.ConfigParser()
+        config_file = Path(os.environ.get('HOME')) / '.rightcall' / 'config.ini'
+        self.parser.read(config_file)
+        data = {}
+        for key in self.parser[header]:
+            data[key] = self.parser[header][key]
+        return data
 
 
 @click.group()
@@ -32,20 +58,11 @@ def elasticsearch(ctx, host, index, region):
 
 
 @elasticsearch.command()
+@click.option('--debug/--no-debug', default=False)
 @click.pass_context
-def configure(ctx):
-    conf = es_configure.ESConfigure()
+def configure(ctx, debug):
+    conf = cfg.Configure('elasticsearch', ('host', 'index', 'region'), debug=debug)
     conf.run()
-    # host = str(input(f"HOST [{ctx.obj.es.host}]: "))
-    # if host is not None:
-    #     ctx.obj.es.host = host
-    # index = str(input(f"INDEX [{ctx.obj.es.index}]: "))
-    # if index is not None:
-    #     ctx.obj.es.index = index
-    # region = str(input(f"REGION [{ctx.obj.es.region}]: "))
-    # if region is not None:
-    #     ctx.obj.es.region = region
-
 
 
 @elasticsearch.command()
@@ -78,7 +95,7 @@ def update(comp2elas, source):
 @click.argument('doc_id')
 @click.pass_context
 def get_item(ctx, doc_id):
-    item = ctx.es.get_item(doc_id)
+    item = ctx.obj.es.get_item(doc_id)
     click.echo(f"{item}")
 
 

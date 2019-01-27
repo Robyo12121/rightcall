@@ -1,1 +1,1 @@
-from .cli import es_configure
+from .cli import configure
