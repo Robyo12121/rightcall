@@ -19,6 +19,7 @@ class Configure():
             level = 'INFO'
         self.logger = logging.getLogger()
         self.logger.setLevel(level=level)
+        self.ensure_exists()
 
     def __str__(self):
         return f"DIR: {self.dir}, FILE: {self.file}, HEADER: {self.header}, DATA: {self.data}"
@@ -39,38 +40,54 @@ class Configure():
             data = dict(self.parser[self.header])
         except KeyError:
             return None
-        # for key in self.parser[self.header]:
-        #     data[key] = self.parser[self.header][key]
         return data
 
     def ensure_exists(self):
+        # Ensure directory '.rightcall' exists
         if not self.dir.exists():
+            self.logger.debug("Making directory")
             self.dir.mkdir()
+        # Ensure file 'config.ini' exists
         if not self.file.exists():
+            self.logger.debug("Making file")
             self.parser[self.header] = {k: '' for k in self.data}
+            self.logger.debug(f"Writing {dict(self.parser[self.header])} to file")
             with open(str(self.file), 'w') as file:
                 self.parser.write(file)
         if self.file.exists():
+            self.logger.debug(f"{self.file} exists. Retrieving info for {self.header}")
             config = self.get(self.file)
+            self.logger.debug(f"Found {config}")
+            # Ensure header is present in file
             if config is not None:
+                self.logger.debug(f"Checking if all fields present in config")
                 for item in self.data:
                     if item not in config:
-                        self.parser[self.header][item] = ''
+                        self.logger.debug(f"{item} missing from config. Writing.")
+                        self.parser[self.header][item] = 'None'
                 with open(str(self.file), 'w') as file:
                     self.parser.write(file)
+            else:
+                self.logger.debug(f"Nothing found for {self.header} in config.ini")
+                self.logger.debug("Writing blank values")
+                data = {k: 'None' for k in self.data}
+                self.write_file(data, self.file)
 
     def get_user_input(self):
         user_input = {}
         current = self.get(self.file)
+        print("Type 'None' to clear value value")
         if current is None:
             for item in self.data:
                 user_input[item] = str(input(f"{item} []: "))
+                # user_input = {k: '' if v is None else current[k] for k, v in input_dict.items()}
             for k, v in user_input.items():
                 if not v:
-                    user_input[k] = None
+                    user_input[k] = 'None'
         else:
             for item in self.data:
                 user_input[item] = str(input(f"{item} [{current[item]}]: "))
+            # result = {k: '' if v is None else current[k] for k, v in user_input.items()}
             for k, v in user_input.items():
                 if v is '':
                     user_input[k] = current[k]
@@ -82,14 +99,20 @@ class Configure():
                 return False
         return True
 
+    def if_no_input(self, input_dict, current_dict):
+        result = {k: '' if v is None else current_dict[k] for k, v in input_dict.items()}
+        return result
+
     def run(self):
         self.ensure_exists()
         user_input = self.get_user_input()
+        self.logger.debug(f"User Input: {user_input}")
         if not self.no_change(user_input):
             self.set(user_input)
 
 
 if __name__ == '__main__':
-    conf = Configure('aws', ('host', 'index', 'region'))
-    print(conf)
+    logging.basicConfig(level=logging.DEBUG)
+    conf = Configure('dynamodb', ('region', 'table', 'endpoint'), debug=True)
     conf.run()
+    logging.info(conf)
