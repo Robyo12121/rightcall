@@ -8,12 +8,10 @@ import datetime
 import pandas as pd
 from bs4 import BeautifulSoup
 from requestium import Session
-# from selenium.webdriver.common.action_chains import ActionChains
 from dotenv import load_dotenv
 import logging
-# from lxml import html
 
-module_logger = logging.getLogger('Rightcall.odigo_robin')
+module_logger = logging.getLogger('rightcall.odigo_robin')
 
 
 load_dotenv()
@@ -21,7 +19,6 @@ username = os.environ.get('PROSODIE_USERNAME')
 passwd = os.environ.get('PROSODIE_PASSWORD')
 print(sys.version)
 driver = r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe'
-
 
 
 def change_date_format(date):
@@ -186,7 +183,6 @@ def download_all_csv(s, username, passwd, download_dir=None):
                         search_range[2],
                         search_range[3])
     s = search_by_language(s, language="_EN")
-    # s.driver.execute_script("zipItems();")
     csvB = s.driver.ensure_element_by_id('csvButton')
     if csvB.is_displayed():
         print("csvB is visible")
@@ -194,24 +190,7 @@ def download_all_csv(s, username, passwd, download_dir=None):
     else:
         print("Not Visible")
     s.driver.ensure_element_by_id("button-1006")
-<<<<<<< HEAD
-=======
-    # yes = s.driver.ensure_element_by_id("button-1006")
->>>>>>> Renamed rightcall_local.py to rightcall.py. Flake8 changes to odigo_robin.py
-    # yes = s.driver.ensure_element_by_css_selector("#button-1006")
-    # yes.ensure_click()
-    # full_xpath = """//div[@id='messagebox-1001']/div[@id='messagebox-1001-toolbar']/div[@id='messagebox-1001-toolbar-innerCt']/div[@id='messagebox-1001-toolbar-targetEl']/a[@id='button-1006'])"""
-    # xpath_messagebox = "//div[@id='messagebox-1001']"
-    # css_sel_messagebox = '.x-css-shadow'
-    # yes = s.driver.ensure_element_by_css_selector(css_sel_messagebox)
-    # if yes.is_displayed():
-    #     print("Yes is visible")
-    #     yes.ensure_click()
-    # else:
-    #     print("Yes button not visible")
-    # s.driver.ensure_element_by_id('button-1006').ensure_click()
     s.driver.close()
-    # return element
 
 
 def check_num_results(s):
@@ -320,11 +299,9 @@ def count_recordings(s):
     """Doesn't Work"""
     refs = []
     items = s.driver.find_elements_by_css_selector('#gridview-1064-body')
-#    items = s.driver.ensure_elements_by_xpath('//*[@id="gridview-1064-body"]')
     for item in items:
         ref_num = s.driver.ensure_element_by_css_selector('#ext-gen1440 > div:nth-child(1)')
         refs.append(ref_num)
-    # refs = s.driver.find_elements_by_xpath('//*[@id="gridview-1064-record-6203746"]')
     return refs
 
 
@@ -357,12 +334,7 @@ def loop_through_table(s):
 if __name__ == '__main__':
     s = setup()
 
-<<<<<<< HEAD
     download_mp3_by_csv(s, username, passwd, 'data/csvs/metadata.csv', 'data/mp3s/demo/')
-=======
-    download_mp3_by_csv(s, username, passwd, 'data/csvs/to_download.csv', 'data/mp3s/')
-
->>>>>>> Renamed rightcall_local.py to rightcall.py. Flake8 changes to odigo_robin.py
 
 #    d = datetime.datetime.now()
 #    s = login(s, username, passwd)
@@ -393,10 +365,6 @@ if __name__ == '__main__':
 #            print(f"Exception occured: {e}")
 #            raise e
 
-<<<<<<< HEAD
-=======
-
->>>>>>> Renamed rightcall_local.py to rightcall.py. Flake8 changes to odigo_robin.py
 #    text, text2 = get_num_results(s)
 #    refs = count_recordings(s)
 #    download_mp3(s)
