@@ -75,29 +75,30 @@ def add(comp2elas, source):
 
 
 @elasticsearch.command()
-@click.option('-s', '--source', 'source', default=None, type=str, help='Source of data')
-@click.pass_obj
-def update(comp2elas, source):
-    click.echo(f'Getting files from: {source}')
-    unknown_refs = comp2elas.update_existing_items(source)
-    click.echo(unknown_refs)
-
-
-@elasticsearch.command()
-@click.argument('doc_id')
+@click.option('--id', required=True, type=str, help="id/referenceNumber of document in elasticsearch index")
 @click.pass_context
-def get_item(ctx, doc_id):
-    item = ctx.obj.es.get_item(doc_id)
+def get_item(ctx, id):
+    item = ctx.obj.es.get_item(id)
     click.echo(f"{item}")
 
 
 @elasticsearch.command()
-@click.option('--document_id', type=str, required=True, help="referenceNumber/id of document")
+@click.option('--id', type=str, required=True, help="referenceNumber/id of document")
 @click.option('--item', type=str, required=True, help="""Enclose JSON object in single quotes. eg. '{"referenceNumber": "012345678"}'""")
 @click.pass_context
-def put_item(ctx, document_id, item):
+def put_item(ctx, id, item):
     i = json.loads(item)
-    item = ctx.obj.es.put_item(document_id, i)
+    item = ctx.obj.es.put_item(id, i)
+    click.echo(f"{item}")
+
+
+@elasticsearch.command()
+@click.option('--id', type=str, required=True, help="referenceNumber/id of document")
+@click.option('--item', type=str, required=True, help="""Enclose JSON object in single quotes. eg. '{"referenceNumber": "012345678"}'""")
+@click.pass_context
+def update(ctx, id, item):
+    i = json.loads(item)
+    item = ctx.obj.es.update(id, i)
     click.echo(f"{item}")
 
 

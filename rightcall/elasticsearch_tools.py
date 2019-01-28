@@ -58,6 +58,12 @@ class Elasticsearch:
         url = self.index_url + '/' + '_doc' + '/' + doc_id
         return self.make_request(method, url)
 
+    def update(self, doc_id, item):
+        method = 'POST'
+        url = self.index_url + '/' + '_doc' + '/' + doc_id + '/' + '_update'
+        data = {'doc': {**item}}
+        return self.make_request(method, url, data)
+
     def create_index(self, name, mapping=None, set_as_current_index=False):
         """Create an elasticsearch index with the given name, mapping and settings
         INPUT: (str) name - name of index
