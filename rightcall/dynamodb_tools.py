@@ -1,106 +1,100 @@
-#! /usr/bin/python
-import pandas as pd
 import boto3
-import json
-import logging
 from decimal import Decimal
-module_logger = logging.getLogger(__name__)
+import logging
 
 
-datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/csvs/'
-path_to_file = datapath + 'odigo4isRecorder_20181121-123619.csv'
-# datapath = 'C:/Users/RSTAUNTO/Desktop/Python/projects/rightcall_robin/data/comprehend/'
-DB_ENDPOINT = 'http://localhost:8000'
-REGION = 'eu-central-1'
-TABLE_NAME = 'Rightcall'
-dynamodb = boto3.resource('dynamodb',
-                          region_name=REGION,
-                          endpoint_url=DB_ENDPOINT)
-
-table = dynamodb.Table(TABLE_NAME)
-
-
-def write_csv_to_db(csv_filepath, table):
-    file = pd.read_csv(csv_filepath, sep=';')
-    records_list = json.loads(file.to_json(orient='records'))
-    print(len(records_list))
-    for call in records_list:
-        if not get_db_item(call['Name'], table, check_exists=True):
-            put_call(call, table)
-        else:
-            # update existing db
-            print(f"Item {call['Name']} already exists")
-
-
-def put_call(call, table, minutes=False):
-    """Put a call item (call metadata) into dynamodb database
-    INPUTS: call - dictionary containing call meta data info including, at minimum:
-        'Name', 'Date', 'Length', 'Skill' fields
-            table - the dynamodb table object to put data into
-            minutes - A flag which, if True, will convert the 'Length' filed from seconds into minutes"""
-    module_logger.debug(f"put_call called with {call['Name']} on {table}")
-    try:
-        response = table.put_item(Item={'referenceNumber': call['Name'],
-                                        'date': call['Date'],
-                                        'length': Decimal(call['Length'] / 60) if minutes else Decimal(call['Length']),
-                                        'skill': call['Skill']})
-    except Exception as e:
-        raise e
-    else:
-        return response
-
-
-def get_db_item(reference_number, table, check_exists=False):
-    if '.json' in reference_number:
-        raise Exception('reference_number is wrong format: contains ".json"')
-    module_logger.debug(f"get_db_item called with {reference_number} on {table}")
-    try:
-        response = table.get_item(Key={
-            'referenceNumber': reference_number})
-
-    except Exception as e:
-            module_logger.error(f"Error: {e.response['Error']['Message']}")
-    else:
-        try:
-            item = response['Item']
-            module_logger.debug(f"Item exists")
-            if check_exists:
-                return
+class RightcallTable:
+    def __init__(self,
+                 region='eu-west-1',
+                 table_name='rightcall',
+                 endpoint=None):
+        self.logger = logging.getLogger('rightcall.dynamodb_tools')
+        self.region = region
+        self.table_name = table_name
+        self.endpoint = endpoint
+        self.logger.debug(f"Initing with endpoint: {self.endpoint}")
+        if region and table_name:
+            if endpoint != 'None':
+                self.dynamodb = boto3.resource('dynamodb', region_name=self.region, endpoint_url=self.endpoint)
             else:
-                module_logger.debug(f"Successful. Returning {type(item)}")
-                return item
-        except KeyError:
-            module_logger.error(f"Item not in db: {reference_number}")
-            return False
+                self.dynamodb = boto3.resource('dynamodb', region_name=self.region)
+            self.table = self.dynamodb.Table(self.table_name)
 
+    def __repr__(self):
+        return f"rtable = dynamodb_tools.RightcallTable('{REGION}'', '{TABLE_NAME}')"
 
-def check_exists(reference_number, table):
-    if '.json' in reference_number:
-        raise ValueError('reference_number is wrong format: contains ".json"')
-    try:
-        response = table.get_item(Key={
-            'referenceNumber': reference_number})
+    def __str__(self):
+        return f"RightcallTable - TABLE NAME: {self.table_name}, REGION: {self.region}, TABLE: {self.table}, ENDPOINT: {self.endpoint}"
 
-    except ClientError as e:
-            print(e.response['Error']['Message'])
-    else:
+    def sanitize_data(self, data):
+        if type(data) is not dict:
+            raise TypeError(f"Incorrect type. Function only accepts 'dict' objects \
+                            Received: {type(data)}")
+        if any(item not in data.keys() for item in ['Name', 'Skill', 'Length', 'Date']):
+            raise Exception("Missing required Key")
+        clean_data = {}
+        clean_data['referenceNumber'] = data['Name']
+        clean_data['skill'] = data['Skill']
+        clean_data['length'] = data['Length']
+        clean_data['date'] = data['Date']
+        return clean_data
+
+    def seconds2minutes(self, item):
+        if 'length' not in item.keys():
+            raise KeyError("'length' key not found. Check case.")
+        if type(item['length']) is not int:
+            raise TypeError(f"Type 'int' expected for 'item['length']'. Received {type(item['length'])}")
+        in_minutes = round(item['length'] / 60, 3)
+        item['length'] = Decimal(str(in_minutes))
+        return item
+
+    def batch_write(self, data):
+        """
+        Input: List of dicts --eg:
+         '[{"Name": "3c9153TVd10403", "Date": "2019-01-14 14:40:35", "Length": 220, "Skill": "ISRO_TEVA_US_EN"},
+           {"Name": "3c90c3TVd10371", "Date": "2019-01-14 14:38:11", "Length": 155, "Skill": "ISRO_TEVA_US_EN"},"}]'
+        """
+        with self.table.batch_writer() as batch:
+            failed_items = []
+            for item in data:
+                try:
+                    item = self.sanitize_data(item)
+                    item = self.seconds2minutes(item)
+                    batch.put_item(Item=item)
+                except Exception as e:
+                    failed_items.append((item, e))
+                    return failed_items
+
+    def get_db_item(self, referenceNumber, check_exists=False):
+        """Access item in database. Return it, unless check_exists flag is True"""
+        if '.json' in referenceNumber:
+            raise Exception('referenceNumber is wrong format: contains ".json"')
+        self.logger.debug(f"get_db_item called with {referenceNumber}")
         try:
-            response['Item']
-            return True
-        except KeyError:
-            print("Item not in db")
-            return False
+            response = self.table.get_item(Key={
+                'referenceNumber': referenceNumber})
+
+        except Exception as e:
+                self.logger.error(f"Error: {e.response['Error']['Message']}")
+        else:
+            self.logger.debug(f"DB response: {response}")
+
+            if check_exists and response.get('Item') is not None:
+                    return True
+            try:
+                item = response['Item']
+                self.logger.debug(f"Successful. Returning {type(item)}")
+                return item
+            except KeyError:
+                self.logger.info(f"Item not in db: {referenceNumber}")
+                return f"{referenceNumber} not found!"
 
 
 if __name__ == '__main__':
-    # item = get_db_item('b76993TOd10547', table)
-    # print(item)
-    # response = table.put_item(Item=item)
-    # for file in os.listdir(datapath):
-    #     check_exists(file.split('--')[0], table)
-
-    response = write_csv_to_db(path_to_file, table)
-#    response = get_db_item('b76993TOd10547', table)
-#    from elasticsearch_upload import get_bucket_item
-#    comp = get_bucket_item(response['referenceNumber'], 'comprehend.rightcall')
-#    print(response)
+    logging.basicConfig()
+    logger = logging.getLogger('rightcall')
+    logger.setLevel('DEBUG')
+    TABLE_NAME = 'rightcall_metadata'
+    REGION = 'eu-west-1'
+    rtable = RightcallTable(REGION, TABLE_NAME)
+    rtable.get_db_item('b76152TVd00246')
