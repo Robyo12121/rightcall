@@ -35,9 +35,10 @@ class Elasticsearch:
         if self.host is not None and self.index is not None:
             self.index_url = self.base_url + self.index
         self.awsauth = auth
+        self.data_fields = ['country', 'referenceNumber', 'date', 'sentiment', 'keyPhrases', 'promotion', 'text', 'length', 'entities']
 
     def __str__(self):
-        return f"Host: {self.host}, Index: {self.index}, Region: {self.region}"
+        return f"Host: {self.host}, Index: {self.index}, Region: {self.region}, Auth: {self.awsauth}"
 
     def make_request(self, method, url, data=None):
         module_logger.info(f"{self.make_request.__name__} called with {method}, {url}")
@@ -157,7 +158,6 @@ class Elasticsearch:
         """Takes two dictionaries (one from dynamo database record,
         the other an object from an s3 bucket and combines them into
         a single dictionary before indexing it to elasticsearch."""
-        # module_logger.debug(f"""load_call_record called with DB record: {db_item['referenceNumber']}, S3 Object:{s3_item['referenceNumber']} on {index}""")
         data = {**db_item, **s3_item}
         try:
             self.put_item(data['referenceNumber'], data)
@@ -190,13 +190,11 @@ class Elasticsearch:
         # Query the index for the document associated with that reference number
         resp = self.search_by_ref(referenceNumber)
         # Check what fields the doc has (all call metadata or not?)
-
-        data_fields = ['skill', 'referenceNumber', 'date', 'sentiment', 'keyPhrases', 'promotion', 'text', 'length', 'entities']
-        if set(data_fields).issubset(set(resp.keys())):
+        if set(self.data_fields).issubset(set(resp.keys())):
             module_logger.debug(f"All fields present")
             return True
         else:
-            module_logger.warning(f"Missing {set(data_fields).difference(set(resp.keys()))} from {data_fields}")
+            module_logger.warning(f"Missing {set(self.data_fields).difference(set(resp.keys()))} from {self.data_fields}")
             return False
 
     def rename(self, dictionary):
