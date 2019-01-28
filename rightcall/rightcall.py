@@ -2,10 +2,11 @@
 import click
 from rightcall import elasticsearch_tools
 from rightcall import configure as cfg
+from rightcall import dynamodb_tools
 import configparser
 import os
 from pathlib import Path
-# import requests
+import logging
 from requests_aws4auth import AWS4Auth
 import boto3
 import json
@@ -15,17 +16,26 @@ credentials = boto3.Session().get_credentials()
 
 class Config(object):
 
-    def __init__(self):
-        data = self.read_config('elasticsearch')
+    def __init__(self, debug=False):
+        # es_data = self.read_config('elasticsearch')
+        es_conf = cfg.Configure('elasticsearch', ('host', 'index', 'region'), debug=debug)
+        es_data = es_conf.get(es_conf.file)
         self.es = elasticsearch_tools.Elasticsearch(
-            host=data['host'],
-            index=data['index'],
-            region=data['region'],
+            host=es_data['host'],
+            index=es_data['index'],
+            region=es_data['region'],
             auth=AWS4Auth(credentials.access_key,
                           credentials.secret_key,
-                          data['region'],
+                          es_data['region'],
                           'es',
                           session_token=credentials.token))
+
+        db_conf = cfg.Configure('dynamodb', ('region', 'table', 'endpoint'), debug=debug)
+        db_data = db_conf.get(db_conf.file)
+        self.db = dynamodb_tools.RightcallTable(
+            db_data['region'],
+            db_data['table'],
+            db_data['endpoint'])
 
     def read_config(self, header):
         self.parser = configparser.ConfigParser()
@@ -39,8 +49,25 @@ class Config(object):
 
 @click.group()
 @click.pass_context
-def rightcall(ctx):
-    ctx.obj = Config()
+@click.option('--debug/--no-debug', default=False, help="Enable debug log messages")
+def rightcall(ctx, debug):
+    ctx.obj = Config(debug=debug)
+
+
+@rightcall.command()
+@click.pass_context
+@click.option('-e', '--element', required=False, type=str, help="The element of rightcall you wish to inspect. Eg. 'dynamodb', 'elasticsearch'")
+def inspect(ctx, element):
+    click.echo(element)
+    click.echo(f"Type: {type(element)}")
+    if element == 'dynamodb':
+        click.echo(ctx.obj.db)
+    elif element == 'elasticsearch':
+        click.echo(ctx.obj.es)
+    elif element is None:
+        click.echo(f"Rightcall general info would go here")
+    else:
+        click.echo(f"Unknown option: {element}")
 
 
 # Elasticsearch command
@@ -55,12 +82,6 @@ def elasticsearch():
 def configure(ctx, debug):
     conf = cfg.Configure('elasticsearch', ('host', 'index', 'region'), debug=debug)
     conf.run()
-
-
-@elasticsearch.command()
-@click.pass_context
-def inspect(ctx):
-    print(ctx.obj.es)
 
 
 @elasticsearch.command()
@@ -84,12 +105,17 @@ def get_item(ctx, id):
 
 @elasticsearch.command()
 @click.option('--id', type=str, required=True, help="referenceNumber/id of document")
-@click.option('--item', type=str, required=True, help="""Enclose JSON object in single quotes. eg. '{"referenceNumber": "012345678"}'""")
+@click.option('--item', type=str, required=False, help="""JSON object enclosed in single quotes. eg. '{"referenceNumber": "012345678"}'""")
+@click.option('--path', type=str, required=False, help="absolute path to json file")
 @click.pass_context
-def put_item(ctx, id, item):
-    i = json.loads(item)
-    item = ctx.obj.es.put_item(id, i)
-    click.echo(f"{item}")
+def put_item(ctx, id, item, path):
+    if path is None:
+        data = json.loads(item)
+    else:
+        with open(path, 'r') as file:
+            data = json.load(file)
+    response = ctx.obj.es.put_item(id, data)
+    click.echo(f"{response}")
 
 
 @elasticsearch.command()
@@ -119,6 +145,36 @@ def search(ctx, query, return_metadata):
 def delete_by_query(ctx, query, dryrun):
     q = json.loads(query)
     result = ctx.obj.es.delete_by_query(q, dryrun=dryrun)
+    click.echo(result)
+
+
+@elasticsearch.command()
+@click.pass_context
+@click.option('--id', required=True, help="referenceNumber/id of document")
+def fully_populated(ctx, id):
+    result = ctx.obj.es.fully_populated_in_elasticsearch(id)
+    click.echo(result)
+
+
+# Dynamodb
+@rightcall.group()
+def dynamodb():
+    pass
+
+
+@dynamodb.command()
+@click.option('--debug/--no-debug', default=False)
+@click.pass_context
+def configure(ctx, debug):
+    conf = cfg.Configure('dynamodb', ('region', 'table', 'endpoint'), debug=debug)
+    conf.run()
+
+
+@dynamodb.command()
+@click.pass_context
+@click.option('--id', required=True, help="Primary key (referenceNumber) of database document")
+def get_item(ctx, id):
+    result = ctx.obj.db.get_db_item(id)
     click.echo(result)
 
 
