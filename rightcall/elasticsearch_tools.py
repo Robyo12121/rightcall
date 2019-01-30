@@ -36,6 +36,8 @@ class Elasticsearch:
             self.index_url = self.base_url + self.index
         self.awsauth = auth
         self.data_fields = ['country', 'referenceNumber', 'date', 'sentiment', 'keyPhrases', 'promotion', 'text', 'length', 'entities']
+        logging.basicConfig(level=logging.DEBUG)
+        self.logger = logging.getLogger()
 
     def __str__(self):
         return f"Host: {self.host}, Index: {self.index}, Region: {self.region}, Auth: {self.awsauth}"
@@ -220,6 +222,42 @@ class Elasticsearch:
                 module_logger.debug(f"Deleting {field}")
                 del dictionary[field]
         return dictionary
+
+    def modify_by_search(self, query_dict, function, *args, dryrun=True):
+        """
+        INPUT: es - elasticsearch_tools.Elasticsearch() instance
+            query_dict - dictionary containing elasticsearch query
+            function - function to apply to each search result
+                        (must return complete document to be reindexed)
+            *args - any arguments to be passed to the function
+        """
+        results = self.search(query_dict)
+        self.logger.info(f"Number of items retreived: {len(results)}")
+        for i, item in enumerate(results):
+            if not dryrun:
+                self.logger.info(f"Working on {i}")
+            else:
+                self.logger.info(f"(dryrun) Working on {i}")
+            try:
+                item = function(item, *args)
+            except KeyError as k_err:
+                self.logger.error(f"KeyError: {k_err}, Item: {item}")
+            except Exception as e:
+                self.logger.error(f"Something went wrong with: Item: {item}, Error: {e}")
+            if not dryrun:
+                self.logger.warning(f"NOT DRYRUN. WRITING TO ELASTICSEARCH INDEX")
+                self.put_item(item['referenceNumber'], item)
+
+    def remove_keywords(self, somedict, keywords):
+        count = 0
+        kps = somedict['keyPhrases']
+        for item in keywords:
+            if item in kps:
+                kps.remove(item)
+                count += 1
+        self.logger.info(f"Removed {count} items from {somedict['referenceNumber']}")
+        somedict['keyPhrases'] = kps
+        return somedict
 
     def reindex_with_correct_mappings(self, MAPPING):
         """ Function to use incase mapping of index gets

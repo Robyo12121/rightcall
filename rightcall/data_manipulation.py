@@ -52,9 +52,17 @@ def skill_to_country(item_dict, mapping):
     return item_dict
 
 
-def remove_useless_keywords(item_dict, keywords):
+def remove_keywords(somedict, keywords):
     # for item in item_dict['keyPhrases']:
-    pass
+    count = 0
+    kps = somedict['keyPhrases']
+    for item in keywords:
+        if item in kps:
+            kps.remove(item)
+            count += 1
+    logger.info(f"Removed {count} items from {somedict['referenceNumber']}")
+    somedict['keyPhrases'] = kps
+    return somedict
 
 
 def modify_by_search(es, query_dict, function, *args, dryrun=True):

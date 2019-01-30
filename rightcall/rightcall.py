@@ -3,10 +3,7 @@ import click
 from rightcall import elasticsearch_tools
 from rightcall import configure as cfg
 from rightcall import dynamodb_tools
-import configparser
-import os
-from pathlib import Path
-import logging
+from rightcall import odigo_robin
 from requests_aws4auth import AWS4Auth
 import boto3
 import json
@@ -17,7 +14,6 @@ credentials = boto3.Session().get_credentials()
 class Config(object):
 
     def __init__(self, debug=False):
-        # es_data = self.read_config('elasticsearch')
         es_conf = cfg.Configure('elasticsearch', ('host', 'index', 'region'), debug=debug)
         es_data = es_conf.get(es_conf.file)
         self.es = elasticsearch_tools.Elasticsearch(
@@ -36,15 +32,6 @@ class Config(object):
             db_data['region'],
             db_data['table'],
             db_data['endpoint'])
-
-    def read_config(self, header):
-        self.parser = configparser.ConfigParser()
-        config_file = Path(os.environ.get('HOME')) / '.rightcall' / 'config.ini'
-        self.parser.read(config_file)
-        data = {}
-        for key in self.parser[header]:
-            data[key] = self.parser[header][key]
-        return data
 
 
 @click.group()
@@ -129,7 +116,7 @@ def update(ctx, id, item):
 
 
 @elasticsearch.command()
-@click.argument('query', type=str, required=True)
+@click.option('--query', type=str, required=True, help="Elasticsearch query")
 @click.option('--return_metadata/--no-return_metadata', default=False)
 @click.pass_context
 def search(ctx, query, return_metadata):
@@ -156,6 +143,17 @@ def fully_populated(ctx, id):
     click.echo(result)
 
 
+@elasticsearch.command()
+@click.pass_context
+@click.option('--query', type=str, required=True, help="Elasticsearch query")
+@click.option('--dryrun/--no-dryrun', default=False)
+@click.argument('keywords', type=str, required=True, nargs=-1)
+def remove_keywords(ctx, keywords, query, dryrun):
+    q = json.loads(query)
+    click.echo(f"Attempting to remove {keywords} from all documents that match {query}")
+    ctx.obj.es.modify_by_search(q, ctx.obj.es.remove_keywords, keywords, dryrun=dryrun)
+
+
 # Dynamodb
 @rightcall.group()
 def dynamodb():
@@ -180,14 +178,16 @@ def get_item(ctx, id):
 
 # Retrieve Command
 @rightcall.group()
-def retrieve():
+def download():
     pass
 
 
-@retrieve.command()
-@click.option('--ref', 'referenceNumber', type=str, help="Specify reference number string of call to retrieve")
-def call(referenceNumber):
-    click.echo(referenceNumber)
+@download.command()
+# @click.option('--ref', 'referenceNumber', required=False, type=str, help="Specify reference number string of call to retrieve")
+@click.option('--csv', 'csv_path', required=False, type=str, help="Specify absolute path to csv file")
+@click.option('--dst', 'destination', required=False, type=str, help="Absolute path for destination folder")
+def mp3(csv_path, destination):
+    click.echo(csv_path, destination)
 
 
 if __name__ == '__main__':
