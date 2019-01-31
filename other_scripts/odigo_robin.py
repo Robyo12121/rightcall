@@ -67,7 +67,8 @@ def setup():
     s = Session(webdriver_path=driver,
                 browser='chrome',
                 default_timeout=15,
-                webdriver_options={'arguments': ['headless']})
+                # webdriver_options={'arguments': ['headless']}
+                )
     return s
 
 
@@ -334,7 +335,7 @@ def loop_through_table(s):
 if __name__ == '__main__':
     s = setup()
 
-    download_mp3_by_csv(s, username, passwd, 'data/csvs/metadata.csv', 'data/mp3s/demo/')
+    download_mp3_by_csv(s, username, passwd, 'data/csvs/demo/odigo4isRecorder_20190131-162007.csv', 'data/mp3s/demo/')
 
 #    d = datetime.datetime.now()
 #    s = login(s, username, passwd)

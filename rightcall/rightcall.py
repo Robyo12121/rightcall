@@ -3,7 +3,7 @@ import click
 from rightcall import elasticsearch_tools
 from rightcall import configure as cfg
 from rightcall import dynamodb_tools
-# from rightcall import odigo_robin
+from rightcall import odigo_downloader
 from requests_aws4auth import AWS4Auth
 import boto3
 import json
@@ -33,6 +33,29 @@ class Config(object):
             db_data['table'],
             db_data['endpoint'])
 
+        dl_conf = cfg.Configure('odigo',
+                                ('username',
+                                 'password',
+                                 'driverpath',
+                                 'default_download_dir',
+                                 'headless',
+                                 ))
+        dl_data = dl_conf.get(dl_conf.file)
+        if dl_data['headless'] == 'True':
+            self.dl = odigo_downloader.Downloader(
+                dl_data['username'],
+                dl_data['password'],
+                dl_data['driverpath'],
+                dl_data['default_download_dir'],
+                webdriver_options={'arguments': ['headless']})
+        else:
+            self.dl = odigo_downloader.Downloader(
+                dl_data['username'],
+                dl_data['password'],
+                dl_data['driverpath'],
+                dl_data['default_download_dir'],
+                webdriver_options={})
+
 
 @click.group()
 @click.pass_context
@@ -46,11 +69,12 @@ def rightcall(ctx, debug):
 @click.option('-e', '--element', required=False, type=str, help="The element of rightcall you wish to inspect. Eg. 'dynamodb', 'elasticsearch'")
 def inspect(ctx, element):
     click.echo(element)
-    click.echo(f"Type: {type(element)}")
     if element == 'dynamodb':
         click.echo(ctx.obj.db)
     elif element == 'elasticsearch':
         click.echo(ctx.obj.es)
+    elif element == 'download':
+        click.echo(ctx.obj.dl)
     elif element is None:
         click.echo(f"Rightcall general info would go here")
     else:
@@ -183,11 +207,21 @@ def download():
 
 
 @download.command()
+@click.option('--debug/--no-debug', default=False)
+@click.pass_context
+def configure(ctx, debug):
+    conf = cfg.Configure('odigo', ('username', 'password', 'driverpath', 'default_download_dir', 'headless'), debug=debug)
+    conf.run()
+
+
+@download.command()
 # @click.option('--ref', 'referenceNumber', required=False, type=str, help="Specify reference number string of call to retrieve")
 @click.option('--csv', 'csv_path', required=False, type=str, help="Specify absolute path to csv file")
-@click.option('--dst', 'destination', required=False, type=str, help="Absolute path for destination folder")
-def mp3(csv_path, destination):
-    click.echo(csv_path, destination)
+@click.option('--dst', 'destination', required=False, default=None, type=str, help="Absolute path for destination folder")
+@click.pass_context
+def mp3(ctx, csv_path, destination):
+    result = ctx.obj.dl.download_mp3_by_csv(csv_path, download_dir=destination)
+    click.echo(result)
 
 
 if __name__ == '__main__':

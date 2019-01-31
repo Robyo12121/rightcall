@@ -9,20 +9,36 @@ import os
 
 class Downloader():
 
-    def __init__(self, username, password, driver_path, download_path=None):
+    def __init__(
+            self,
+            username,
+            password,
+            driver_path,
+            download_path=None,
+            browser='chrome',
+            webdriver_options={'arguments': ['headless']}
+    ):
+
         self._username = username
         self._password = password
         self.driver_path = driver_path
         self.download_path = download_path
         self.logger = logging.getLogger('rightcall.downloader')
-        self.url = 'https://enregistreur.prosodie.com/odigo4isRecorder/' \
-            'EntryPoint?serviceName=LoginHandler'
+        self.url = 'https://enregistreur.prosodie.com/odigo4isRecorder/EntryPoint?serviceName=LoginHandler'
+        self.browser = browser
+        self.webdriver_options = webdriver_options
         self.session = Session(
             webdriver_path=self.driver_path,
-            browser='chrome',
+            browser=self.browser,
             default_timeout=15,
-            webdriver_options={'arguments': ['headless']}
+            webdriver_options=self.webdriver_options
         )
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger('rightcall.odigo_downloader')
+
+    def __str__(self):
+        return f"\nDOWNLOAD PATH: {self.download_path}\nOPTIONS: {self.webdriver_options}\n" \
+            f"DRIVER PATH: {self.driver_path}\nUSERNAME: {self._username}\nURL: {self.url}"
 
     def login(self):
         self.session.driver.get(self.url)
@@ -31,6 +47,7 @@ class Downloader():
         self.session.driver.ensure_element_by_name('valider').click()
 
     def download_mp3(self, path=None, ref=None, xpath=None):
+        self.logger.info(f"\ndownload_mp3 called with:\nPATH: {path},\nREF: {ref},\nXPATH: {xpath}")
         if ref is not None and xpath is None:
             self.session.driver.ensure_element_by_class_name('x-action-col-icon').click()
         elif xpath is not None and ref is None:
@@ -72,6 +89,8 @@ class Downloader():
         self.session.driver.close()
 
     def download_mp3_by_csv(self, csv_path, download_dir=None):
+        if download_dir is None:
+            download_dir = self.download_path
         self.login()
         refs = pd.read_csv(csv_path, sep=';').Name
         length = len(refs)
@@ -79,17 +98,18 @@ class Downloader():
             sys.stdout.write('\r')
             sys.stdout.write('downloading: %s/%s' % (i + 1, length))
             sys.stdout.flush()
-            s = self.search_by_ref(ref)
+            self.search_by_ref(ref)
             mp3_path = None
             if download_dir is not None:
                 file_name = '%s.mp3' % ref
                 mp3_path = os.path.join(download_dir, file_name)
-            result = self.download_mp3(s, mp3_path, ref)
+            result = self.download_mp3(path=mp3_path, ref=ref)
             if result == 1:
                 return 1
         sys.stdout.write('\n')
         sys.stdout.flush()
         self.session.driver.close()
+        return "Finished"
 
     def search_by_ref(self, ref):
         self.session.driver.get(self.url)
@@ -99,11 +119,17 @@ class Downloader():
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
+    from time import sleep
+    from pathlib import Path
     load_dotenv()
     username = os.environ.get('PROSODIE_USERNAME')
     password = os.environ.get('PROSODIE_PASSWORD')
+    download_dir = Path(r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\data\mp3s\demo')
+    print(download_dir)
+    csv_file = Path(r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\data\csvs\demo\odigo4isRecorder_20190131-162007.csv')
     dl = Downloader(
         username,
         password,
-        r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe')
-    dl.download_mp3(ref='4ee645TVd00933')
+        r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe',
+        webdriver_options={})
+    dl.download_mp3_by_csv(csv_file, download_dir=download_dir)
