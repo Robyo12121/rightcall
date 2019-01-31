@@ -3,7 +3,7 @@ import click
 from rightcall import elasticsearch_tools
 from rightcall import configure as cfg
 from rightcall import dynamodb_tools
-from rightcall import odigo_robin
+# from rightcall import odigo_robin
 from requests_aws4auth import AWS4Auth
 import boto3
 import json

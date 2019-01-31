@@ -18,7 +18,6 @@ class TestElasticsearch(unittest.TestCase):
         self.assertEqual(self.es.base_url, 'https://some_host.robinisbadatpython.com/silly_index')
         self.assertIsNone(self.es.awsauth)
 
-
     def test_put_item(self):
         pass
         # with patch('requests.request') as mocked_request:
