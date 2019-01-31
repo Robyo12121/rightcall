@@ -1,6 +1,18 @@
 import boto3
 from decimal import Decimal
 import logging
+import json
+
+
+# Helper class to convert a DynamoDB item to JSON.
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            if abs(o) % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
 
 
 class RightcallTable:
@@ -82,7 +94,7 @@ class RightcallTable:
             if check_exists and response.get('Item') is not None:
                     return True
             try:
-                item = response['Item']
+                item = json.dumps(response['Item'], indent=4, cls=DecimalEncoder)
                 self.logger.debug(f"Successful. Returning {type(item)}")
                 return item
             except KeyError:
