@@ -7,17 +7,31 @@ import sys
 import comprehend
 import transcribe
 import promotion
+import dynamodb_tools
+import elasticsearch_tools
+import decimal
+import requests
+from requests_aws4auth import AWS4Auth
 
 if os.environ.get('AWS_EXECUTION_ENV') is not None:
     print(f"Executing in AWS environment {os.environ.get('AWS_EXECUTION_ENV')}")
     TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
     MP3S = os.environ.get('MP3S')
     COMPREHEND = os.environ.get('COMPREHEND')
+    ES_HOST = os.environ.get('ES_HOST')
+    INDEX = os.environ.get('INDEX')
+    TABLE_NAME = os.environ.get('TABLE_NAME')
+    REGION = os.environ.get('REGION')
+
 else:
     print('Not executing in AWS environment')
     TRANSCRIPTS = 'transcribe.rightcall'
     MP3S = 'mp3.rightcall'
     COMPREHEND = 'comprehend.rightcall'
+    ES_HOST = 'search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com'
+    INDEX = 'demo'
+    TABLE_NAME = 'rightcall_metadata'
+    REGION = 'eu-west-1'
 
 print(MP3S, TRANSCRIPTS, COMPREHEND)
 
@@ -34,6 +48,46 @@ class ThrottlingException(Exception):
     pass
 
 
+def Elasticsearch(event):
+    # Get item from s3 bucket
+    try:
+        body = json.loads(event['Records'][0]['body'])
+    except Exception as e:
+        raise e
+
+    bucket = body['Records'][0]['s3']['bucket']['name']
+    filename = body['Records'][0]['s3']['object']['key']
+    logger.info('Event from bucket: {}'.format(str(bucket)))
+    if bucket == COMPREHEND:
+        s3_data = get_item_from_s3(COMPREHEND, filename)
+    else:
+        logger.error(f"Wrong bucket. Source: {bucket} not equal to {COMPREHEND}")
+        return False
+    logger.info(f"Data from {bucket}: {s3_data}")
+
+    referenceNumber = s3_data['referenceNumber']
+    # Get corresponding item from metadata
+    db = dynamodb_tools.RightcallTable(REGION, TABLE_NAME)
+    if db.get_db_item(referenceNumber, check_exists=True):
+        metadata = db.get_db_item(referenceNumber, check_exists=False)
+    else:
+        logger.warning(f"Couldn't find metadata for {referenceNumber} in {TABLE_NAME}")
+        logger.warning(f"Writing {referenceNumber} to {INDEX} index without metadata")
+    logger.info(f"Data retrieved from {TABLE_NAME} database: {metadata}")
+    # Combine items and sanitize them
+    credentials = boto3.Session().get_credentials()
+    awsauth = AWS4Auth(credentials.access_key,
+                       credentials.secret_key,
+                       REGION,
+                       'es',
+                       session_token=credentials.token)
+    es = elasticsearch_tools.Elasticsearch(ES_HOST, REGION, INDEX, awsauth)
+    # Load them into elasticsearch
+    result = es.load_call_record(metadata, s3_data)
+    logger.info(f"Result: {result}")
+    return result
+
+
 def Transcribe(event):
     """
     S3 object created event received
@@ -44,6 +98,7 @@ def Transcribe(event):
         body = json.loads(event['Records'][0]['body'])
     except Exception as e:
         raise e
+
     if 'Records' not in body:
         logger.error('Records not in Body, likely s3 test event. Ignoring')
         logger.info('Doing nothing so that this message will be deleted \
@@ -51,7 +106,7 @@ def Transcribe(event):
         return False
     else:
         if len(body['Records']) > 1:
-            logger.error('More than one record. May be missing a job here!')
+            logger.warning('More than one record. May be missing a job here!')
         body = body['Records'][0]
 
     bucket = body['s3']['bucket']['name']
@@ -65,7 +120,8 @@ def Transcribe(event):
             '.amazonaws.com/' + bucket + '/' + key
         logger.info('URI: {}'.format(str(uri)))
     else:
-        logger.info('Wrong Bucket')
+        logger.info('Wrong Bucket. Aborting')
+        return False
     try:
         response = transcribe.transcribe_mp3(uri, TRANSCRIPTS)
         logger.info(response)
@@ -78,6 +134,26 @@ def Transcribe(event):
         isSuccessful = True
         return {'success': isSuccessful,
                 'job_name': job}
+
+
+def get_item_from_s3(bucket, filename):
+    s3 = boto3.client('s3')
+    logger.debug(f'Trying to get {filename} from {bucket}')
+    try:
+        data = s3.get_object(Bucket=bucket, Key=filename)
+        data = data['Body'].read().decode('utf-8')
+    except Exception as e:
+        logger.error(str(e))
+        raise e
+    else:
+        logger.debug('Success')
+    try:
+        data = json.loads(data)
+    except Exception as e:
+        logger.error(str(e))
+        raise e
+    else:
+        return data
 
 
 def Comprehend(event):
@@ -95,21 +171,22 @@ def Comprehend(event):
     s3 = boto3.client('s3')
     filename = event['detail']['TranscriptionJobName'] + '.json'
     logger.info('Filename: {}'.format(str(filename)))
-    try:
-        logger.debug(f'Trying to get {filename} from {TRANSCRIPTS}')
-        data = s3.get_object(Bucket=TRANSCRIPTS, Key=filename)
-        data = data['Body'].read().decode('utf-8')
-    except Exception as e:
-        logger.error(str(e))
-        raise e
-    else:
-        logger.debug('Success')
+    data = get_item_from_s3(TRANSCRIPTS, filename)
+    # try:
+    #     logger.debug(f'Trying to get {filename} from {TRANSCRIPTS}')
+    #     data = s3.get_object(Bucket=TRANSCRIPTS, Key=filename)
+    #     data = data['Body'].read().decode('utf-8')
+    # except Exception as e:
+    #     logger.error(str(e))
+    #     raise e
+    # else:
+    #     logger.debug('Success')
 
-    try:
-        data = json.loads(data)
-    except Exception as e:
-        logger.error(str(e))
-        raise e
+    # try:
+    #     data = json.loads(data)
+    # except Exception as e:
+    #     logger.error(str(e))
+    #     raise e
 
     logger.debug(f'Keys of object: {str(data.keys())}')
 
@@ -173,6 +250,16 @@ def event_type_transcribe_job_status(event):
         return False
 
 
+def getSourceBucket(event):
+    body = json.loads(event['Records'][0]['body'])
+    try:
+        bucket_name = body['Records'][0]['s3']['bucket']['name']
+    except Exception("Couldn't find bucket name. Aborting"):
+        raise Exception
+    else:
+        return bucket_name
+
+
 def event_type_sqs_s3_new_object(event):
     """
     Check if event is a new object event from s3 delivered by sqs
@@ -205,8 +292,18 @@ def Rightcall(event):
         logger.info('Transcribe job event received. Sending to Comprehend.')
         response = Comprehend(event)
     elif event_type_sqs_s3_new_object(event):
-        logger.info('New mp3 uploaded. Sending to Transcribe.')
-        response = Transcribe(event)
+        logger.info('S3 Object Creation event received.')
+        name = getSourceBucket(event)
+        logger.info(f"Source bucket: {name}")
+        if name == COMPREHEND:
+            logger.info("New object in comprehend.rightcall bucket. Sending to Elasticsearch")
+            response = Elasticsearch(event)
+        elif name == MP3S:
+            logger.info("New mp3 file in mp3.rightcall bucket. Sending to Transcribe")
+            response = Transcribe(event)
+        else:
+            logger.error(f"Unrecognised bucket name {name}. Aborting")
+            return False
     else:
         logger.info('Unknown Event Type. Ignoring')
         response = False
@@ -329,5 +426,26 @@ if __name__ == '__main__':
             }
         ]
     }
-    response = lambda_handler(transcribe_job_status_event, None)
+    comprehendSQSEvent = {
+        "Records": [
+            {
+                "messageId": "1256e16d-73ce-4a17-953f-d1bfc9f9aa5e",
+                "receiptHandle": "AQEBiuA6KtB1rLXU4B3Ik7snyFe8V9Nq9QCQrZF0EfH8jSN5myZqzCcgzXdt6IpaUq4KY3tj4XxMZEDySpHXcGt3vbV6+4kmOBtBUS9NPBad5OpaObpJX1x/CccEUb8O5mlQPeQO9ByEL8NjccIh9jxgUJXgF1AVJC3WSSdrmyjs7aEVMkVrGOGJxBL80vkW//RmVw33PeI8DiJ4SNLnkX2botWOwn4y5YmBdTPCHNFoddNLor2sxyZ0/GPUvR0HPwuXGL+lP+fHGYDIlGn0dVAbJ/Xv6X+/iWIuItSjoNTXdhWBSRByMMlI0iKK3wJSw5VAPT6FpxameBuWYisZG9B2SzH1qKCVLWERqmHNASbOVCbNI31R5dBO59HnT1i5tba2oFK9rRPo+Kr4c+M+fmycdA==",
+                "body": "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"eu-west-1\",\"eventTime\":\"2019-01-30T15:31:26.639Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:AROAJSS2B5AINQJXMBQRO:rightcall\"},\"requestParameters\":{\"sourceIPAddress\":\"34.240.16.130\"},\"responseElements\":{\"x-amz-request-id\":\"2D528E550558C5A6\",\"x-amz-id-2\":\"nYcJNP0RRtJkNO3Iasj8gVawGPlNHt4U/JYquAIxeqemuROsEfSyiGlc9s5W4Bis4QpmKFXZ8eY=\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"MjFlNjUzMDAtZmU0My00OTgwLTk0NTAtOTI4YzVjN2MxMjgy\",\"bucket\":{\"name\":\"comprehend.rightcall\",\"ownerIdentity\":{\"principalId\":\"A2VMRRM44J4WYZ\"},\"arn\":\"arn:aws:s3:::comprehend.rightcall\"},\"object\":{\"key\":\"0153c7TVd10148--U7CV61.json\",\"size\":823,\"eTag\":\"ea047a88fce2d303846574aabd57cc88\",\"sequencer\":\"005C51C34E958ADF1F\"}}}]}",
+                "attributes": {
+                    "ApproximateReceiveCount": "11",
+                    "SentTimestamp": "1548862288669",
+                    "SenderId": "AIDAJQOC3SADRY5PEMBNW",
+                    "ApproximateFirstReceiveTimestamp": "1548862288669"
+                },
+                "messageAttributes": {},
+                "md5OfBody": "bd2197d9656112ece2ea2d04b1fe92d5",
+                "eventSource": "aws:sqs",
+                "eventSourceARN": "arn:aws:sqs:eu-west-1:868234285752:RightcallTranscriptionJobs",
+                "awsRegion": "eu-west-1"
+            }
+        ]
+    }
+    logging.basicConfig(level=logging.DEBUG)
+    response = lambda_handler(comprehendSQSEvent, None)
     print(response)
