@@ -6,8 +6,8 @@ import os
 
 if os.environ.get("AWS_EXECUTION_ENV") is not None:
     import text as text_processing
-# except Exception:
-#    from . import text as text_processing
+else:
+    import text as text_processing
 
 try:
     COMPREHEND_SIZE_LIMIT = int(os.environ.get('COMPREHEND_SIZE_LIMIT'))

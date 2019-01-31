@@ -11,6 +11,9 @@ from nltk import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
+if os.environ.get('AWS_EXECUTION_ENV') is not None:
+    NLTK_DATA = os.environ.get('NLTK_DATA')
+
 
 def setupEnv(env):
     """Append '/nltk_data' to nltk data path and return True
@@ -112,7 +115,10 @@ def preprocess(raw_sentence):
     INPUT: string
     OUPUT: list of strings"""
     # Get words
-    tokens = word_tokenize(raw_sentence)
+    try:
+        tokens = word_tokenize(raw_sentence)
+    except LookupError(f"Couldn't find NLTK resource"):
+        nltk.data.path.append(NLTK_DATA)
     words = [w.lower() for w in tokens]
     # Stem words
     porter_stemmer = PorterStemmer()

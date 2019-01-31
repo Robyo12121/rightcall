@@ -90,16 +90,19 @@ class RightcallTable:
                 self.logger.error(f"Error: {e.response['Error']['Message']}")
         else:
             self.logger.debug(f"DB response: {response}")
-
-            if check_exists and response.get('Item') is not None:
-                    return True
-            try:
-                item = json.dumps(response['Item'], indent=4, cls=DecimalEncoder)
+            item = response.get('Item')
+            self.logger.debug(f"Item from response: {item}")
+            self.logger.debug(f"Item is None: {item is None}")
+            if item is None:
+                self.logger.warning(f"{referenceNumber} not found!")
+                return False
+            if check_exists and item:
+                self.logger.debug(f"Returning True")
+                return True
+            else:
+                item['length'] = float(item['length'])
                 self.logger.debug(f"Successful. Returning {type(item)}")
                 return item
-            except KeyError:
-                self.logger.info(f"Item not in db: {referenceNumber}")
-                return f"{referenceNumber} not found!"
 
 
 if __name__ == '__main__':
@@ -109,4 +112,6 @@ if __name__ == '__main__':
     TABLE_NAME = 'rightcall_metadata'
     REGION = 'eu-west-1'
     rtable = RightcallTable(REGION, TABLE_NAME)
-    rtable.get_db_item('b76152TVd00246')
+    # rtable.get_db_item('f7d183TVd10930', check_exists=True)
+    print(rtable.get_db_item('0153c7TVd10148', check_exists=False))
+

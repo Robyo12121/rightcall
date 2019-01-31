@@ -46,6 +46,10 @@ class ThrottlingException(Exception):
     pass
 
 
+class CustomException(Exception):
+    pass
+
+
 def Elasticsearch(event):
     # Get item from s3 bucket
     try:
@@ -68,10 +72,13 @@ def Elasticsearch(event):
     db = dynamodb_tools.RightcallTable(REGION, TABLE_NAME)
     if db.get_db_item(referenceNumber, check_exists=True):
         metadata = db.get_db_item(referenceNumber, check_exists=False)
+        logger.info(f"Data retrieved from {TABLE_NAME} database: {metadata}")
     else:
         logger.warning(f"Couldn't find metadata for {referenceNumber} in {TABLE_NAME}")
-        logger.warning(f"Writing {referenceNumber} to {INDEX} index without metadata")
-    logger.info(f"Data retrieved from {TABLE_NAME} database: {metadata}")
+        # raise CustomException(f"Couldn't retrieve metadata from {TABLE_NAME} table.")
+        logger.error(f"Aborting")
+        return False
+
     # Combine items and sanitize them
     credentials = boto3.Session().get_credentials()
     awsauth = AWS4Auth(credentials.access_key,
@@ -170,22 +177,6 @@ def Comprehend(event):
     filename = event['detail']['TranscriptionJobName'] + '.json'
     logger.info('Filename: {}'.format(str(filename)))
     data = get_item_from_s3(TRANSCRIPTS, filename)
-    # try:
-    #     logger.debug(f'Trying to get {filename} from {TRANSCRIPTS}')
-    #     data = s3.get_object(Bucket=TRANSCRIPTS, Key=filename)
-    #     data = data['Body'].read().decode('utf-8')
-    # except Exception as e:
-    #     logger.error(str(e))
-    #     raise e
-    # else:
-    #     logger.debug('Success')
-
-    # try:
-    #     data = json.loads(data)
-    # except Exception as e:
-    #     logger.error(str(e))
-    #     raise e
-
     logger.debug(f'Keys of object: {str(data.keys())}')
 
     # Give the transcript text to comprehend.py
@@ -329,7 +320,7 @@ if __name__ == '__main__':
         'region': 'region',
         'resources': [],
         'detail': {
-            'TranscriptionJobName': 'b76152TVd00246--3bc99ed9-e035-4316-9a05',
+            'TranscriptionJobName': 'f7d183TVd10930--HQUXWU',
             'TranscriptionJobStatus': 'COMPLETE'}
     }
     s3_new_object_event = {
@@ -445,5 +436,5 @@ if __name__ == '__main__':
         ]
     }
     logging.basicConfig(level=logging.DEBUG)
-    response = lambda_handler(comprehendSQSEvent, None)
+    response = lambda_handler(transcribe_job_status_event, None)
     print(response)
