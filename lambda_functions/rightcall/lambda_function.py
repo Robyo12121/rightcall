@@ -9,8 +9,6 @@ import transcribe
 import promotion
 import dynamodb_tools
 import elasticsearch_tools
-import decimal
-import requests
 from requests_aws4auth import AWS4Auth
 
 if os.environ.get('AWS_EXECUTION_ENV') is not None:
