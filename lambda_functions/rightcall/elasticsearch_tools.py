@@ -1,11 +1,7 @@
-import requests
-from requests_aws4auth import AWS4Auth
-import boto3
 import json
 import logging
 import decimal
-
-# module_logger = logging.getLogger('rightcall.elasticsearch_tools')
+import requests
 
 
 # Helper class to convert a DynamoDB item to JSON.
@@ -319,43 +315,3 @@ class Elasticsearch:
         self.reindex(temp_name, self.index)
         self.logger.info(f"Deleting: {temp_name}")
         self.delete_index(temp_name)
-
-
-if __name__ == '__main__':
-    module_logger = logging.getLogger('elasticsearch_tools')
-    module_logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    ch.setFormatter(formatter)
-    module_logger.addHandler(ch)
-
-    service = 'es'
-    REGION = 'eu-west-1'
-    credentials = boto3.Session().get_credentials()
-    awsauth = AWS4Auth(credentials.access_key,
-                       credentials.secret_key,
-                       REGION,
-                       service,
-                       session_token=credentials.token)
-    # es = Elasticsearch('search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com', "rightcall", "eu-west-1", auth=awsauth)
-    es = Elasticsearch(None, None, None, None)
-    print(es)
-    mapping = {
-        "mappings": {
-            "_doc": {
-                "properties": {
-                    "referenceNumber": {"type": "keyword"},
-                    "text": {"type": "text"},
-                    "sentiment": {"type": "keyword"},
-                    "promotion": {"type": "keyword"},
-                    "entities": {"type": "keyword"},
-                    "keyPhrases": {"type": "keyword"},
-                    "date": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss"},
-                    "skill": {"type": "keyword"},
-                    "length": {"type": "integer"}
-                }
-            }
-        }
-    }
-    # response = es.create_index('temp')

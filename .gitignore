@@ -91,6 +91,7 @@ env.bak/
 venv.bak/
 venv_local_dev/
 venv_lambda_dev/
+venv_lambda/*
 
 # Spyder project settings
 .spyderproject
