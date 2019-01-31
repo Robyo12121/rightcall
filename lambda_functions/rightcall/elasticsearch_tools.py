@@ -5,7 +5,7 @@ import json
 import logging
 import decimal
 
-module_logger = logging.getLogger('rightcall.elasticsearch_tools')
+# module_logger = logging.getLogger('rightcall.elasticsearch_tools')
 
 
 # Helper class to convert a DynamoDB item to JSON.
@@ -19,28 +19,40 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
+class CustomException(Exception):
+    pass
+
+
 class Elasticsearch:
     """Custom Elasticsearch to abstract away talking to elasticsearch
     domain. Uses HTTP requests."""
-    def __init__(self, host, region, index=None, auth=None):
+    def __init__(self,
+                 host='search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com',
+                 region='eu-west-1',
+                 index='rightcall',
+                 auth=None):
         self.host = host
+        self.region = region
         self.index = index
-        self.base_url = 'https://' + self.host + '/'
-        self.index_url = self.base_url + self.index
+        if self.host is not None:
+            self.base_url = 'https://' + self.host + '/'
+        if self.host is not None and self.index is not None:
+            self.index_url = self.base_url + self.index
         self.awsauth = auth
+        self.data_fields = ['country', 'referenceNumber', 'date', 'sentiment', 'keyPhrases', 'promotion', 'text', 'length', 'entities']
+        logging.basicConfig(level=logging.DEBUG)
+        self.logger = logging.getLogger('rightcall.dynamodb_tools')
+
+    def __str__(self):
+        return f"Host: {self.host}, Index: {self.index}, Region: {self.region}, Auth: {self.awsauth}"
 
     def make_request(self, method, url, data=None):
-        module_logger.info(f"{self.make_request.__name__} called with {method}, {url}")
-        module_logger.debug(f"...with data: {data}")
+        self.logger.info(f"{self.make_request.__name__} called with {method}, {url}")
+        self.logger.debug(f"...with data: {data}")
         headers = {"Content-Type": "application/json"}
         r = requests.request(method, url, auth=self.awsauth, headers=headers, data=json.dumps(data, cls=DecimalEncoder))
-
-        # response = {"statusCode": r.status_code,
-        #             "headers": {"Access-Control-Allow-Origin": '*'},
-        #             "isBase64Encoded": False}
-        # response['body'] = r.json()
         response = r.json()
-        module_logger.debug(f"Response: {response}")
+        self.logger.debug(f"Response: {response}")
         return response
 
     def put_item(self, doc_id, item):
@@ -53,6 +65,12 @@ class Elasticsearch:
         url = self.index_url + '/' + '_doc' + '/' + doc_id
         return self.make_request(method, url)
 
+    def update(self, doc_id, item):
+        method = 'POST'
+        url = self.index_url + '/' + '_doc' + '/' + doc_id + '/' + '_update'
+        data = {'doc': {**item}}
+        return self.make_request(method, url, data)
+
     def create_index(self, name, mapping=None, set_as_current_index=False):
         """Create an elasticsearch index with the given name, mapping and settings
         INPUT: (str) name - name of index
@@ -63,28 +81,28 @@ class Elasticsearch:
         url = self.base_url + name
         response = self.make_request('GET', url)
         if name in response.keys():
-            module_logger.warning(f"Index {name} already exists. Aborting create index call...")
+            self.logger.warning(f"Index {name} already exists. Aborting create index call...")
             if set_as_current_index:
-                module_logger.warning(f"Current working index changed from {self.index} to {name}")
+                self.logger.warning(f"Current working index changed from {self.index} to {name}")
                 self.index = name
                 self.index_url = self.base_url + self.index
             else:
-                module_logger.warning(f"Current working index remains: {self.index}")
+                self.logger.warning(f"Current working index remains: {self.index}")
                 raise Exception("Working index did not change when requested")
             return
 
-        module_logger.debug(f"Creating {name} index...")
+        self.logger.debug(f"Creating {name} index...")
         data = {}
         if mapping is not None:
             data = mapping
         response = self.make_request('PUT', url, data=data)
-        module_logger.debug(response)
+        self.logger.debug(response)
         if set_as_current_index and response['acknowledged']:
-            module_logger.warning(f"Current working index changed from {self.index} to {name}")
+            self.logger.warning(f"Current working index changed from {self.index} to {name}")
             self.index = name
             self.index_url = self.base_url + self.index
         else:
-            module_logger.warning(f"Current working index remains: {self.index}")
+            self.logger.warning(f"Current working index remains: {self.index}")
             raise Exception("Working index did not change when requested")
         return response
 
@@ -101,7 +119,7 @@ class Elasticsearch:
         response = self.make_request('DELETE', url)
         return response
 
-    def search(self, query):
+    def search(self, query, return_metadata=False):
         """Search index using query
         INPUT: expects elasticsearch query in full.
         OUTPUT: list of dicts each containing a search hit
@@ -109,37 +127,52 @@ class Elasticsearch:
         url = self.index_url + '/_search'
         method = 'GET'
         results = self.make_request(method, url, query)
-        hits = [item['_source'] for item in results['hits']['hits']]
-        return hits
+        if not return_metadata:
+            results = [item['_source'] for item in results['hits']['hits']]
+        return results
 
     def search_by_ref(self, referenceNumber):
         if '.json' in referenceNumber:
-            module_logger.error(f"{self.search_by_ref.__name__}: '.json' found in {referenceNumber}")
+            self.logger.error(f"{self.search_by_ref.__name__}: '.json' found in {referenceNumber}")
             raise ValueError(f"{self.search_by_ref.__name__}: {referenceNumber} is wrong format: contains '.json'")
         query = {"query": {"match": {"referenceNumber": referenceNumber}}}
-        module_logger.info(f"Query: {query}")
+        self.logger.info(f"Query: {query}")
         hits = self.search(query)
-        module_logger.debug(hits)
+        self.logger.debug(hits)
         if len(hits) > 1:
-            module_logger.warning(f"{self.search_by_ref.__name__}: More than one hit found!")
+            self.logger.warning(f"{self.search_by_ref.__name__}: More than one hit found!")
         if not hits:
-            module_logger.error(f"{self.search_by_ref.__name__}: No hits: {hits}")
+            self.logger.error(f"{self.search_by_ref.__name__}: No hits: {hits}")
             raise Exception(f"{self.search_by_ref.__name__}: Nothing found!")
         if type(hits[0]) is not dict:
-            module_logger.error(f"Return value is not a dictionary!")
+            self.logger.error(f"Return value is not a dictionary!")
             raise ValueError(f"{self.search_by_ref.__name__}: Return value is not a dictionary!")
         return hits[0]
 
-    def load_call_record(self, db_item, s3_item):
+    def delete_by_query(self, query, dryrun=False):
+        method = 'POST'
+        url = self.index_url + '/' + '_delete_by_query'
+        if dryrun:
+            response = self.search(query)
+            self.logger.info(f"Dryrun: Delete :{response}")
+            return f"(dryrun): Delete {response}"
+        else:
+            response = self.make_request(method, url, query)
+        return response
+
+    def load_call_record(self, db_item, s3_item, dryrun=False):
         """Takes two dictionaries (one from dynamo database record,
         the other an object from an s3 bucket and combines them into
         a single dictionary before indexing it to elasticsearch."""
-        # module_logger.debug(f"""load_call_record called with DB record: {db_item['referenceNumber']}, S3 Object:{s3_item['referenceNumber']} on {index}""")
         data = {**db_item, **s3_item}
+        data = self.sanitize(data)
+        if dryrun:
+            self.logger.debug(f"(dryrun) Loading {data} into index: {self.index}")
+            return data
         try:
             self.put_item(data['referenceNumber'], data)
         except Exception as e:
-            module_logger.error(e)
+            self.logger.error(e)
             raise e
         else:
             return True
@@ -150,12 +183,12 @@ class Elasticsearch:
         if '.json' in referenceNumber:
             raise ValueError(f'{referenceNumber} is wrong format: contains ".json"')
         result = self.get_item(referenceNumber)
-        module_logger.debug(f"Exists: {result}")
+        self.logger.debug(f"Exists: {result}")
         if result['found']:
-            module_logger.debug("exists: Returning True")
+            self.logger.debug("exists: Returning True")
             return True
         else:
-            module_logger.debug("exists: Returning False")
+            self.logger.debug("exists: Returning False")
             return False
 
     def fully_populated_in_elasticsearch(self, referenceNumber):
@@ -167,22 +200,18 @@ class Elasticsearch:
         # Query the index for the document associated with that reference number
         resp = self.search_by_ref(referenceNumber)
         # Check what fields the doc has (all call metadata or not?)
-
-        data_fields = ['skill', 'referenceNumber', 'date', 'sentiment', 'keyPhrases', 'promotion', 'text', 'length', 'entities']
-        # es_fields = self.get_hit_fields(resp)
-        # module_logger.debug(es.fields)
-        if set(data_fields).issubset(set(resp.keys())):
-            module_logger.debug(f"All fields present")
+        if set(self.data_fields).issubset(set(resp.keys())):
+            self.logger.debug(f"All fields present")
             return True
         else:
-            module_logger.warning(f"Missing {set(data_fields).difference(set(resp.keys()))} from {data_fields}")
+            self.logger.warning(f"Missing {set(self.data_fields).difference(set(resp.keys()))} from {self.data_fields}")
             return False
 
     def rename(self, dictionary):
         """Receives a dictionary and renames replaces any keys
         that also appear in the 'fields' dictionary with the appropriate
         value"""
-        module_logger.debug(f"rename called with {dictionary.keys()}")
+        self.logger.debug(f"rename called with {dictionary.keys()}")
         mapping = {
             'ref': 'referenceNumber',
             'reference_number': 'referenceNumber',
@@ -191,16 +220,80 @@ class Elasticsearch:
             'keyphrases': 'keyPhrases'}
 
         if type(dictionary) is not dict:
-            module_logger.error("input is not dictionary. ERROR")
+            self.logger.error("input is not dictionary. ERROR")
             raise TypeError("input is not dictionary. ERROR")
 
         for field in dictionary.keys():
             if field in mapping.keys():
-                module_logger.debug(f"Renaming {field} to {mapping[field]}")
+                self.logger.debug(f"Renaming {field} to {mapping[field]}")
                 dictionary[mapping[field]] = dictionary[field]
-                module_logger.debug(f"Deleting {field}")
+                self.logger.debug(f"Deleting {field}")
                 del dictionary[field]
         return dictionary
+
+    def modify_by_search(self, query_dict, function, *args, dryrun=True):
+        """
+        INPUT: es - elasticsearch_tools.Elasticsearch() instance
+            query_dict - dictionary containing elasticsearch query
+            function - function to apply to each search result
+                        (must return complete document to be reindexed)
+            *args - any arguments to be passed to the function
+        """
+        results = self.search(query_dict)
+        self.logger.info(f"Number of items retreived: {len(results)}")
+        for i, item in enumerate(results):
+            if not dryrun:
+                self.logger.info(f"Working on {i}")
+            else:
+                self.logger.info(f"(dryrun) Working on {i}")
+            try:
+                item = function(item, *args)
+            except KeyError as k_err:
+                self.logger.error(f"KeyError: {k_err}, Item: {item}")
+            except Exception as e:
+                self.logger.error(f"Something went wrong with: Item: {item}, Error: {e}")
+            if not dryrun:
+                self.logger.warning(f"NOT DRYRUN. WRITING TO ELASTICSEARCH INDEX")
+                self.put_item(item['referenceNumber'], item)
+
+    def sanitize(self, item_dict):
+        keys = item_dict.keys()
+        # If skill is present, extract country from it
+        if 'skill' in keys:
+            item_dict = self.skill2country(item_dict)
+        # Ensure all keys from datafields are present in keys
+        for item in self.data_fields:
+            if item not in keys:
+                self.logger.error(f"item is missing key: {item}")
+                raise CustomException(f"item is missing key: {item}")
+        # Ensure there are no extra keys present in keys, not present in data_fields
+        for item in keys:
+            if item not in self.data_fields:
+                self.logger.error(f"item contains unrecognised key: {item}")
+        return item_dict
+
+    def remove_keywords(self, somedict, keywords):
+        count = 0
+        kps = somedict['keyPhrases']
+        for item in keywords:
+            if item in kps:
+                kps.remove(item)
+                count += 1
+        self.logger.info(f"Removed {count} items from {somedict['referenceNumber']}")
+        somedict['keyPhrases'] = kps
+        return somedict
+
+    def skill2country(self, item_dict):
+        """skill format: 'ISRO_TEVA_GB_EN'
+           country format: 'GB'"""
+        skill = item_dict['skill']
+        country = skill.split('_')[2]
+        self.logger.debug(f"Got {country} from {skill}. Adding to dictionary.")
+        item_dict['country'] = country
+        self.logger.debug(f"Deleting skill: {skill} from dictionary")
+        del item_dict['skill']
+        self.logger.debug(f"Returning modified dict: {item_dict}")
+        return item_dict
 
     def reindex_with_correct_mappings(self, MAPPING):
         """ Function to use incase mapping of index gets
@@ -214,23 +307,18 @@ class Elasticsearch:
 
             Needs some error checking"""
         temp_name = self.index + '_temp'
-        module_logger.info(f"Creating index with name: {temp_name}")
+        self.logger.info(f"Creating index with name: {temp_name}")
         self.create_index(temp_name, MAPPING)
-        module_logger.info(f"Reindexing {self.index} into {temp_name}")
+        self.logger.info(f"Reindexing {self.index} into {temp_name}")
         self.reindex(self.index, temp_name)
-        module_logger.info(f"Deleting: {self.index}")
+        self.logger.info(f"Deleting: {self.index}")
         self.delete_index(self.index)
-        module_logger.info(f"Creating index {self.index} with correct mappings")
+        self.logger.info(f"Creating index {self.index} with correct mappings")
         self.create_index(self.index, MAPPING)
-        module_logger.info(f"Reindexing {temp_name} into {self.index}")
+        self.logger.info(f"Reindexing {temp_name} into {self.index}")
         self.reindex(temp_name, self.index)
-        module_logger.info(f"Deleting: {temp_name}")
+        self.logger.info(f"Deleting: {temp_name}")
         self.delete_index(temp_name)
-
-    def get_hit_fields(self, es_resp_obj_dict):
-        """Returns a list of they fields in an elasticsearch search response
-            hit object."""
-        return es_resp_obj_dict.keys()
 
 
 if __name__ == '__main__':
@@ -250,7 +338,9 @@ if __name__ == '__main__':
                        REGION,
                        service,
                        session_token=credentials.token)
-    es = Elasticsearch('search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com', "rightcall", "eu-west-1", auth=awsauth)
+    # es = Elasticsearch('search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com', "rightcall", "eu-west-1", auth=awsauth)
+    es = Elasticsearch(None, None, None, None)
+    print(es)
     mapping = {
         "mappings": {
             "_doc": {
@@ -268,5 +358,4 @@ if __name__ == '__main__':
             }
         }
     }
-    response = es.create_index('temp')
-
+    # response = es.create_index('temp')
