@@ -115,6 +115,15 @@ def get_item(ctx, id):
 
 
 @elasticsearch.command()
+@click.option('--id', required=True, type=str, help="id/referenceNumber of document in elasticsearch index")
+@click.option('--dryrun/--no-dryrun', default=False, help="Call with '--dryrun' to see what items will be deleted")
+@click.pass_context
+def delete_item(ctx, id, dryrun):
+    item = ctx.obj.es.delete_item(id, dryrun=dryrun)
+    click.echo(f"{item}")
+
+
+@elasticsearch.command()
 @click.option('--id', type=str, required=True, help="referenceNumber/id of document")
 @click.option('--item', type=str, required=False, help="""JSON object enclosed in single quotes. eg. '{"referenceNumber": "012345678"}'""")
 @click.option('--path', type=str, required=False, help="absolute path to json file")
@@ -150,8 +159,8 @@ def search(ctx, query, return_metadata):
 
 
 @elasticsearch.command()
-@click.argument('query', type=str, required=True)
-@click.option('--dryrun/--no-dryrun', default=True)
+@click.option('--query', type=str, required=True, help="""Elaticsearch query enclosed in single quotes. Eg. '{"query": {"match": {"referenceNumber": "5403e8TVd10419"}}}'""")
+@click.option('--dryrun/--no-dryrun', default=True, help="Call with '--dryrun' to see what items will be deleted")
 @click.pass_context
 def delete_by_query(ctx, query, dryrun):
     q = json.loads(query)
@@ -220,6 +229,8 @@ def configure(ctx, debug):
 @click.option('--dst', 'destination', required=False, default=None, type=str, help="Absolute path for destination folder")
 @click.pass_context
 def mp3(ctx, csv_path, destination):
+    # Should also trigger uploading of csv metadata to dynamodb
+    ctx.obj.db.write_csv_to_db(csv_path)
     result = ctx.obj.dl.download_mp3_by_csv(csv_path, download_dir=destination)
     click.echo(result)
 

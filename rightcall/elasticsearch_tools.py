@@ -60,6 +60,14 @@ class Elasticsearch:
         url = self.index_url + '/' + '_doc' + '/' + doc_id
         return self.make_request(method, url, item)
 
+    def delete_item(self, doc_id, dryrun=False):
+        method = 'DELETE'
+        url = self.index_url + '/' + '_doc' + '/' + doc_id
+        if dryrun:
+            self.logger.warning(f"Delete Index:{doc_id}")
+        else:
+            return self.make_request(method, url)
+
     def get_item(self, doc_id):
         method = 'GET'
         url = self.index_url + '/' + '_doc' + '/' + doc_id
@@ -114,10 +122,14 @@ class Elasticsearch:
         response = self.make_request('POST', url, data=data)
         return response
 
-    def delete_index(self, index_name):
+    def delete_index(self, index_name, dryrun=True):
         url = self.base_url + index_name
-        response = self.make_request('DELETE', url)
-        return response
+        if dryrun:
+            self.logger.info(f"Dryrun: Delete Index:{index_name}")
+            return f"(dryrun): Delete Index:{index_name}"
+        else:
+            response = self.make_request('DELETE', url)
+            return response
 
     def search(self, query, return_metadata=False):
         """Search index using query
