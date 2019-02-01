@@ -30,7 +30,8 @@ class Elasticsearch:
                  host='search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com',
                  region='eu-west-1',
                  index='rightcall',
-                 auth=None):
+                 auth=None,
+                 debug='INFO'):
         self.host = host
         self.region = region
         self.index = index
@@ -40,18 +41,24 @@ class Elasticsearch:
             self.index_url = self.base_url + self.index
         self.awsauth = auth
         self.data_fields = ['country', 'referenceNumber', 'date', 'sentiment', 'keyPhrases', 'promotion', 'text', 'length', 'entities']
-        logging.basicConfig(level=logging.DEBUG)
-        self.logger = logging.getLogger('rightcall.dynamodb_tools')
+        # logging.basicConfig(level=debug)
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(debug)
 
     def __str__(self):
         return f"Host: {self.host}, Index: {self.index}, Region: {self.region}, Auth: {self.awsauth}"
 
     def make_request(self, method, url, data=None):
-        self.logger.info(f"{self.make_request.__name__} called with {method}, {url}")
+        """INPUTS:
+            method: (str) - HTTP request method: 'GET', 'PUT' etc
+            url: (str) - url on which to perform request
+           OUTPUTS:
+            response: (str) - stringified json object"""
+        self.logger.debug(f"make_request called with {method}, {url}")
         self.logger.debug(f"...with data: {data}")
         headers = {"Content-Type": "application/json"}
         r = requests.request(method, url, auth=self.awsauth, headers=headers, data=json.dumps(data, cls=DecimalEncoder))
-        response = r.json()
+        response = json.dumps(r.json())
         self.logger.debug(f"Response: {response}")
         return response
 
@@ -138,9 +145,15 @@ class Elasticsearch:
         """
         url = self.index_url + '/_search'
         method = 'GET'
-        results = self.make_request(method, url, query)
+        results = json.loads(self.make_request(method, url, query))
+        self.logger.debug(f"Search results: {results}")
+        self.logger.debug(f"Type: {type(results)}")
         if not return_metadata:
-            results = [item['_source'] for item in results['hits']['hits']]
+            try:
+                results = [item['_source'] for item in results['hits']['hits']]
+            except TypeError as type_error:
+                self.logger.error(f"{type_error}", exc_info=True)
+                results = [item['_source'] for item in results['hits']]
         return results
 
     def search_by_ref(self, referenceNumber):
@@ -184,7 +197,7 @@ class Elasticsearch:
         try:
             self.put_item(data['referenceNumber'], data)
         except Exception as e:
-            self.logger.error(e)
+            self.logger.error(e, exc_info=True)
             raise e
         else:
             return True
@@ -261,9 +274,9 @@ class Elasticsearch:
             try:
                 item = function(item, *args)
             except KeyError as k_err:
-                self.logger.error(f"KeyError: {k_err}, Item: {item}")
+                self.logger.error(f"KeyError: {k_err}, Item: {item}", exc_info=True)
             except Exception as e:
-                self.logger.error(f"Something went wrong with: Item: {item}, Error: {e}")
+                self.logger.error(f"Something went wrong with: Item: {item}, Error: {e}", exc_info=True)
             if not dryrun:
                 self.logger.warning(f"NOT DRYRUN. WRITING TO ELASTICSEARCH INDEX")
                 self.put_item(item['referenceNumber'], item)
@@ -334,40 +347,41 @@ class Elasticsearch:
 
 
 if __name__ == '__main__':
-    module_logger = logging.getLogger('elasticsearch_tools')
-    module_logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    ch.setFormatter(formatter)
-    module_logger.addHandler(ch)
+    pass
+    # module_logger = logging.getLogger('elasticsearch_tools')
+    # module_logger.setLevel(logging.DEBUG)
+    # formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+    # ch = logging.StreamHandler()
+    # ch.setLevel(logging.DEBUG)
+    # ch.setFormatter(formatter)
+    # module_logger.addHandler(ch)
 
-    service = 'es'
-    REGION = 'eu-west-1'
-    credentials = boto3.Session().get_credentials()
-    awsauth = AWS4Auth(credentials.access_key,
-                       credentials.secret_key,
-                       REGION,
-                       service,
-                       session_token=credentials.token)
-    # es = Elasticsearch('search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com', "rightcall", "eu-west-1", auth=awsauth)
-    es = Elasticsearch(None, None, None, None)
-    print(es)
-    mapping = {
-        "mappings": {
-            "_doc": {
-                "properties": {
-                    "referenceNumber": {"type": "keyword"},
-                    "text": {"type": "text"},
-                    "sentiment": {"type": "keyword"},
-                    "promotion": {"type": "keyword"},
-                    "entities": {"type": "keyword"},
-                    "keyPhrases": {"type": "keyword"},
-                    "date": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss"},
-                    "skill": {"type": "keyword"},
-                    "length": {"type": "integer"}
-                }
-            }
-        }
-    }
+    # service = 'es'
+    # REGION = 'eu-west-1'
+    # credentials = boto3.Session().get_credentials()
+    # awsauth = AWS4Auth(credentials.access_key,
+    #                    credentials.secret_key,
+    #                    REGION,
+    #                    service,
+    #                    session_token=credentials.token)
+    # # es = Elasticsearch('search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com', "rightcall", "eu-west-1", auth=awsauth)
+    # es = Elasticsearch(None, None, None, None)
+    # print(es)
+    # mapping = {
+    #     "mappings": {
+    #         "_doc": {
+    #             "properties": {
+    #                 "referenceNumber": {"type": "keyword"},
+    #                 "text": {"type": "text"},
+    #                 "sentiment": {"type": "keyword"},
+    #                 "promotion": {"type": "keyword"},
+    #                 "entities": {"type": "keyword"},
+    #                 "keyPhrases": {"type": "keyword"},
+    #                 "date": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss"},
+    #                 "skill": {"type": "keyword"},
+    #                 "length": {"type": "integer"}
+    #             }
+    #         }
+    #     }
+    # }
     # response = es.create_index('temp')

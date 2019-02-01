@@ -7,6 +7,8 @@ from rightcall import odigo_downloader
 from requests_aws4auth import AWS4Auth
 import boto3
 import json
+import logging
+
 
 credentials = boto3.Session().get_credentials()
 
@@ -129,6 +131,7 @@ def delete_item(ctx, id, dryrun):
 @click.option('--path', type=str, required=False, help="absolute path to json file")
 @click.pass_context
 def put_item(ctx, id, item, path):
+    click.echo(f"{item}")
     if path is None:
         data = json.loads(item)
     else:
@@ -236,4 +239,11 @@ def mp3(ctx, csv_path, destination):
 
 
 if __name__ == '__main__':
+    logger = logging.getLogger('rightcall')
+    logger.setLevel('DEBUG')
+    ch = logging.StreamHandler()
+    ch.setLevel('DEBUG')
+    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
     rightcall()

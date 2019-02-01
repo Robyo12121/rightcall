@@ -84,7 +84,7 @@ class RightcallTable:
                     batch.put_item(Item=item)
                 except Exception as e:
                     failed_items.append((item, e))
-                    self.logger.error(f"Failed to put item: {i}, {item}")
+                    self.logger.error(f"Failed to put item: {i}, {item}", exc_info=True)
         if not failed_items:
             return failed_items
         else:
@@ -100,7 +100,7 @@ class RightcallTable:
                 'referenceNumber': referenceNumber})
 
         except Exception as e:
-                self.logger.error(f"Error: {e.response['Error']['Message']}")
+                self.logger.error(f"Error: {e.response['Error']['Message']}", exc_info=True)
         else:
             self.logger.debug(f"DB response: {response}")
             item = response.get('Item')
