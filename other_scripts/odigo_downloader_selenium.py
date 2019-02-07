@@ -1,4 +1,5 @@
 import logging
+from selenium import webdriver
 from requestium import Session
 import time
 from bs4 import BeautifulSoup
@@ -8,16 +9,19 @@ import os
 import datetime
 
 
+class CustomException(Exception):
+    pass
+
+
 class Downloader():
 
     def __init__(
             self,
             username,
             password,
-            driver_path,
+            driver_path=None,
             download_path=None,
-            browser='chrome',
-            webdriver_options={'arguments': ['headless']},
+            headless=True,
             logger=None
     ):
         if not logger:
@@ -32,23 +36,59 @@ class Downloader():
         self.download_path = download_path
         self.logger = logging.getLogger('odigo_downloader.downloader')
         self.url = 'https://enregistreur.prosodie.com/odigo4isRecorder/EntryPoint?serviceName=LoginHandler'
-        self.browser = browser
-        self.webdriver_options = webdriver_options
-        self.logger.debug(f"Creating Session object with values: {self.webdriver_options}")
-        self.session = Session(
-            webdriver_path=self.driver_path,
-            browser=self.browser,
-            default_timeout=15,
-            webdriver_options=self.webdriver_options
-        )
-        self.logger.debug(f"Session details: {self.session.driver}")
+        self.headless = headless
         self.validated = False
+        self.active = False
 
     def __str__(self):
         return f"\nDOWNLOAD PATH: {self.download_path}\nOPTIONS: {self.webdriver_options}\n" \
             f"DRIVER PATH: {self.driver_path}\nUSERNAME: {self._username}\nURL: {self.url}"
 
-    def login(self):
+    def setup_selenium_browser(self):
+        if self.active:
+            return f"Session/Browser already active. Cannot have two concurrent sessions/browsers"
+        options = webdriver.ChromeOptions()
+        prefs = {
+            'download.default_directory': self.download_path,
+            'download.prompt_for_download': False,
+            'download.directory_upgrade': True,
+            'safebrowsing.enabled': False,
+            'safebrowsing.disable_download_protection': True}
+        options.add_experimental_option('prefs', prefs)
+
+        if self.headless:
+            options.add_argument('--headless')
+
+        self.browser = webdriver.Chrome(self.driver_path, options=options)
+
+        if self.headless:
+            self.browser.command_executor._commands["send_command"] = ("POST", '/session/$sessionId/chromium/send_command')
+            params = {'cmd': 'Page.setDownloadBehavior', 'params': {'behavior': 'allow', 'downloadPath': self.download_path}}
+            command_result = self.browser.execute("send_command", params)
+            for key in command_result:
+                self.logger.debug("result:" + key + ":" + str(command_result[key]))
+
+        self.active = True
+
+    def setup_requestium_session(self):
+        if self.active:
+            return f"Session/Browser already active. Cannot have two concurrent sessions/browsers"      
+        if self.headless:
+            webdriver_options = {'arguments': ['headless']}
+        else:
+            webdriver_options = {}
+        self.logger.debug(f"Creating Session object with values: {webdriver_options}")
+        self.session = Session(
+            webdriver_path=self.driver_path,
+            browser='chrome',
+            default_timeout=15,
+            webdriver_options=webdriver_options)
+        self.active = True
+
+    def login_requestium(self):
+        if self.active:
+            raise CustomException(f"Cannot have two active sessions/browsers")
+        self.setup_requestium_session()
         self.logger.debug(f"Going to URL: {self.url}")
         self.session.driver.get(self.url)
         self.logger.debug(f"Entering credentials")
@@ -56,6 +96,16 @@ class Downloader():
         self.session.driver.ensure_element_by_name('password').send_keys(self._password)
         self.session.driver.ensure_element_by_name('valider').click()
         self.validated = True
+
+    def login_selenium(self):
+        if self.active:
+            raise CustomException(f"Cannot have two active sessions/browsers")
+        self.setup_selenium_browser() 
+        self.browser.get(self.url)
+        self.browser.find_element_by_name('mail').send_keys(username)
+        self.browser.find_element_by_name('password').send_keys(password)
+        self.browser.find_element_by_name('valider').click()
+        return
 
     def download_mp3(self, path=None, ref=None, xpath=None):
         self.logger.info(f"\ndownload_mp3 called with:\nPATH: {path},\nREF: {ref},\nXPATH: {xpath}")
@@ -92,7 +142,7 @@ class Downloader():
         return
 
     def download_mp3_by_ref(self, ref, path=None):
-        self.login()
+        self.login_requestium()
         self.search_by_ref(ref)
         result = self.download_mp3(path, ref)
         if result == 1:
@@ -102,7 +152,7 @@ class Downloader():
     def download_mp3_by_csv(self, csv_path, download_dir=None):
         if download_dir is None:
             download_dir = self.download_path
-        self.login()
+        self.login_requestium()
         refs = pd.read_csv(csv_path, sep=';').Name
         length = len(refs)
         for i, ref in enumerate(refs):
@@ -184,14 +234,14 @@ class Downloader():
 
         """
         if start_date:
-            self.session.driver.ensure_element_by_name('dateDebut').send_keys(start_date)
+            self.browser.find_element_by_name('dateDebut').send_keys(start_date)
         if start_time:
-            self.session.driver.ensure_element_by_name('heureDebut').send_keys(start_time)
+            self.browser.find_element_by_name('heureDebut').send_keys(start_time)
         if end_date:
-            self.session.driver.ensure_element_by_name('dateFin').send_keys(end_date)
+            self.browser.find_element_by_name('dateFin').send_keys(end_date)
         if end_time:
-            self.session.driver.ensure_element_by_name('heureFin').send_keys(end_time)
-        self.session.driver.ensure_element_by_id('button-1009').click()
+            self.browser.find_element_by_name('heureFin').send_keys(end_time)
+        self.browser.find_element_by_id('button-1009').click()
         return
 
     def download_all_half_hour(self):
@@ -199,19 +249,20 @@ class Downloader():
         self.logger.debug(f"Login check...")
         if not self.validated:
             self.logger.debug(f"Not logged in. Validating")
-            self.login()
+            self.login_selenium()
         self.logger.debug(f"Logged in.")
         self.logger.debug(f"Getting search range")
         search_range = self.set_range(datetime.datetime.now())
         sleep(2)
         self.logger.debug(f"Applying filters")
-        self.session.driver.ensure_element_by_id("criteres-inputEl").send_keys('_EN')
+        self.browser.find_element_by_id("criteres-inputEl").send_keys('_EN')
         self.search_by_range(*search_range)
         sleep(5)
         self.logger.debug(f"Downloading results to {self.download_path}")
-        csvB = self.session.driver.ensure_element_by_id("csvButton")
+        csvB = self.browser.find_element_by_id("csvButton")
         csvB.click()
-        self.session.driver.ensure_element_by_id("button-1006").click()
+        self.browser.find_element_by_id("button-1006").click()
+        self.browser.switch_to.window(self.browser.window_handles[1])
         sleep(5)
         self.logger.debug(f"Ending session")
 
@@ -231,16 +282,16 @@ if __name__ == '__main__':
     load_dotenv()
     username = os.environ.get('PROSODIE_USERNAME')
     password = os.environ.get('PROSODIE_PASSWORD')
-    download_dir = Path(r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\data\mp3s\demo')
+    download_dir = Path(r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\data\csvs')
     module_logger.debug(f"Download dir: {download_dir}")
     csv_file = Path(r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\data\csvs\demo\odigo4isRecorder_20190131-162007.csv')
-    prefs = {'download.default_directory': r'C:\\Users\\RSTAUNTO\\Desktop\\Python\\projects\\rightcall_robin\\data\\csvs\\'}
+
     dl = Downloader(
         username,
         password,
-        r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe',
-        webdriver_options={'prefs': prefs},
-        logger=module_logger)  # {'arguments': ['headless']})
-    dl.login()
+        driver_path=r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe',
+        download_path=str(download_dir),
+        headless=True,
+        logger=module_logger)
     # dl.download_mp3_by_csv(csv_file, download_dir=download_dir)
     dl.download_all_half_hour()

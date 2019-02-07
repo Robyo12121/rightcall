@@ -23,7 +23,7 @@ driver = r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe'
 
 def change_date_format(date):
     try:
-        correct_string = date.strptime(str(date.date()), '%Y-%m-%d').strftime('%m-%d-%Y')
+        correct_string = date.strptime(str(date.date()), '%Y-%m-%d').strftime('%d-%m-%Y')
         return correct_string
     except Exception as e:
         raise e
