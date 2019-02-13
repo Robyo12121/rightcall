@@ -6,6 +6,7 @@ import pandas as pd
 import sys
 import os
 import datetime
+from pathlib import Path
 
 
 class Downloader():
@@ -29,7 +30,7 @@ class Downloader():
         self._username = username
         self._password = password
         self.driver_path = driver_path
-        self.download_path = download_path
+        self.download_path = Path(download_path)
         self.logger = logging.getLogger('odigo_downloader.downloader')
         self.url = 'https://enregistreur.prosodie.com/odigo4isRecorder/EntryPoint?serviceName=LoginHandler'
         self.browser = browser
@@ -80,6 +81,8 @@ class Downloader():
                 soap = BeautifulSoup(self.session.driver.page_source, 'lxml')
                 ref = soap.findAll('div', class_='x-grid-cell-inner')[1].text
             path = '%s.mp3' % ref
+        else:
+            path = self.download_path / f"{ref}.mp3"
         if r.status_code == 200:
             with open(path, 'wb') as f:
                 for chunk in r.iter_content(1024 * 2014):
@@ -87,11 +90,16 @@ class Downloader():
         else:
             return 1
         # Requests --> Selenium
-        self.session.transfer_session_cookies_to_driver()
-        self.session.driver.switch_to.default_content()
+        try:
+            self.session.transfer_session_cookies_to_driver()
+            self.session.driver.switch_to.default_content()
+        except Exception as e:
+            self.logger.error(str(e), exc_info=True)
         return
 
     def download_mp3_by_ref(self, ref, path=None):
+        if not path:
+            path = self.download_path
         self.login()
         self.search_by_ref(ref)
         result = self.download_mp3(path, ref)
