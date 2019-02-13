@@ -6,15 +6,16 @@ import pandas as pd
 import sys
 import os
 import datetime
+from pathlib import Path
 
 
 class Downloader():
 
     def __init__(
             self,
-            username,
-            password,
-            driver_path,
+            username=None,
+            password=None,
+            driver_path=None,
             download_path=None,
             browser='chrome',
             webdriver_options={'arguments': ['headless']},
@@ -29,20 +30,13 @@ class Downloader():
         self._username = username
         self._password = password
         self.driver_path = driver_path
-        self.download_path = download_path
+        self.download_path = Path(download_path)
         self.logger = logging.getLogger('odigo_downloader.downloader')
         self.url = 'https://enregistreur.prosodie.com/odigo4isRecorder/EntryPoint?serviceName=LoginHandler'
         self.browser = browser
         self.webdriver_options = webdriver_options
-        self.logger.debug(f"Creating Session object with values: {self.webdriver_options}")
-        self.session = Session(
-            webdriver_path=self.driver_path,
-            browser=self.browser,
-            default_timeout=15,
-            webdriver_options=self.webdriver_options
-        )
-        self.logger.debug(f"Session details: {self.session.driver}")
         self.validated = False
+        self.session = False
 
     def __str__(self):
         return f"\nDOWNLOAD PATH: {self.download_path}\nOPTIONS: {self.webdriver_options}\n" \
@@ -56,6 +50,16 @@ class Downloader():
         self.session.driver.ensure_element_by_name('password').send_keys(self._password)
         self.session.driver.ensure_element_by_name('valider').click()
         self.validated = True
+
+    def startSession(self):
+        self.logger.debug(f"Creating Session object with values: {self.webdriver_options}")
+        self.session = Session(
+            webdriver_path=self.driver_path,
+            browser=self.browser,
+            default_timeout=15,
+            webdriver_options=self.webdriver_options
+        )
+        self.logger.debug(f"Session details: {self.session.driver}")
 
     def download_mp3(self, path=None, ref=None, xpath=None):
         self.logger.info(f"\ndownload_mp3 called with:\nPATH: {path},\nREF: {ref},\nXPATH: {xpath}")
@@ -80,6 +84,8 @@ class Downloader():
                 soap = BeautifulSoup(self.session.driver.page_source, 'lxml')
                 ref = soap.findAll('div', class_='x-grid-cell-inner')[1].text
             path = '%s.mp3' % ref
+        else:
+            path = self.download_path / f"{ref}.mp3"
         if r.status_code == 200:
             with open(path, 'wb') as f:
                 for chunk in r.iter_content(1024 * 2014):
@@ -87,12 +93,20 @@ class Downloader():
         else:
             return 1
         # Requests --> Selenium
-        self.session.transfer_session_cookies_to_driver()
-        self.session.driver.switch_to.default_content()
+        try:
+            self.session.transfer_session_cookies_to_driver()
+            self.session.driver.switch_to.default_content()
+        except Exception as e:
+            self.logger.error(str(e), exc_info=True)
         return
 
     def download_mp3_by_ref(self, ref, path=None):
-        self.login()
+        if not path:
+            path = self.download_path
+        if not self.session:
+            self.startSession()
+        if not self.validated:
+            self.login()
         self.search_by_ref(ref)
         result = self.download_mp3(path, ref)
         if result == 1:
@@ -102,7 +116,10 @@ class Downloader():
     def download_mp3_by_csv(self, csv_path, download_dir=None):
         if download_dir is None:
             download_dir = self.download_path
-        self.login()
+        if not self.session:
+            self.startSession()
+        if not self.validated:
+            self.login()
         refs = pd.read_csv(csv_path, sep=';').Name
         length = len(refs)
         for i, ref in enumerate(refs):
@@ -195,7 +212,10 @@ class Downloader():
         return
 
     def download_all_half_hour(self):
-        self.logger.debug(f"Downloading calls from last half hour")
+        """Downloads a csv file of reference numbers from the last (complete) half hour"""
+        self.logger.debug(f"Downloading refs from last half hour")
+        if not self.session:
+            self.startSession()
         self.logger.debug(f"Login check...")
         if not self.validated:
             self.logger.debug(f"Not logged in. Validating")
@@ -203,23 +223,21 @@ class Downloader():
         self.logger.debug(f"Logged in.")
         self.logger.debug(f"Getting search range")
         search_range = self.set_range(datetime.datetime.now())
-        sleep(2)
+        time.sleep(2)
         self.logger.debug(f"Applying filters")
         self.session.driver.ensure_element_by_id("criteres-inputEl").send_keys('_EN')
         self.search_by_range(*search_range)
-        sleep(5)
+        time.sleep(5)
         self.logger.debug(f"Downloading results to {self.download_path}")
         csvB = self.session.driver.ensure_element_by_id("csvButton")
         csvB.click()
         self.session.driver.ensure_element_by_id("button-1006").click()
-        sleep(5)
+        time.sleep(5)
         self.logger.debug(f"Ending session")
 
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
-    from time import sleep
-    from pathlib import Path
     module_logger = logging.getLogger('odigo_downloader')
     module_logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
@@ -236,11 +254,13 @@ if __name__ == '__main__':
     csv_file = Path(r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\data\csvs\demo\odigo4isRecorder_20190131-162007.csv')
     prefs = {'download.default_directory': r'C:\\Users\\RSTAUNTO\\Desktop\\Python\\projects\\rightcall_robin\\data\\csvs\\'}
     dl = Downloader(
-        username,
-        password,
-        r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe',
-        webdriver_options={'prefs': prefs},
+        username=username,
+        password=password,
+        download_path=download_dir,  # prefs['download.default_directory'],
+        driver_path=r'C:\Users\RSTAUNTO\Desktop\Projects\rightcall\chromedriver.exe',
+        webdriver_options={},  # {'prefs': prefs},
         logger=module_logger)  # {'arguments': ['headless']})
-    dl.login()
+    # dl.login()
     # dl.download_mp3_by_csv(csv_file, download_dir=download_dir)
-    dl.download_all_half_hour()
+    # dl.download_all_half_hour()
+    dl.download_mp3_by_ref("63e12cTVd10731")
