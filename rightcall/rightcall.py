@@ -55,17 +55,17 @@ class Config(object):
         dl_data = dl_conf.get(dl_conf.file)
         if dl_data['headless'] == 'True':
             self.dl = odigo_downloader.Downloader(
-                dl_data['username'],
-                dl_data['password'],
-                dl_data['driverpath'],
-                dl_data['default_download_dir'],
+                username=dl_data['username'],
+                password=dl_data['password'],
+                driver_path=dl_data['driverpath'],
+                download_path=dl_data['default_download_dir'],
                 webdriver_options={'arguments': ['headless']})
         else:
             self.dl = odigo_downloader.Downloader(
-                dl_data['username'],
-                dl_data['password'],
-                dl_data['driverpath'],
-                dl_data['default_download_dir'],
+                username=dl_data['username'],
+                password=dl_data['password'],
+                driver_path=dl_data['driverpath'],
+                download_path=dl_data['default_download_dir'],
                 webdriver_options={})
 
 
@@ -98,20 +98,12 @@ def inspect(ctx, element):
 @click.pass_context
 @click.option('--debug/--no-debug', default=False, help="Enable debug log messages")
 def elasticsearch(ctx, debug):
-    # Load info from config file
-    es_conf = cfg.Configure('elasticsearch', ('host', 'index', 'region'), debug=debug)
-    es_data = es_conf.get(es_conf.file)
-    # Create object using config info to use with sub commands
-    ctx.obj = elasticsearch_tools.Elasticsearch(
-        host=es_data['host'],
-        index=es_data['index'],
-        region=es_data['region'],
-        auth=AWS4Auth(
-            credentials.access_key,
-            credentials.secret_key,
-            es_data['region'],
-            'es',
-            session_token=credentials.token))
+    ctx.obj = Config(elasticsearch=True)
+
+@elasticsearch.command()
+@click.pass_context
+def inspect(ctx):
+    click.echo(ctx.obj.es)
 
 
 @elasticsearch.command()
@@ -126,7 +118,7 @@ def configure(ctx, debug):
 @click.option('--id', required=True, type=str, help="id/referenceNumber of document in elasticsearch index")
 @click.pass_context
 def get_item(ctx, id):
-    item = ctx.obj.get_item(id)
+    item = ctx.obj.es.get_item(id)
     click.echo(f"{item}")
 
 
@@ -135,7 +127,7 @@ def get_item(ctx, id):
 @click.option('--dryrun/--no-dryrun', default=False, help="Call with '--dryrun' to see what items will be deleted")
 @click.pass_context
 def delete_item(ctx, id, dryrun):
-    item = ctx.obj.delete_item(id, dryrun=dryrun)
+    item = ctx.obj.es.delete_item(id, dryrun=dryrun)
     click.echo(f"{item}")
 
 
@@ -159,7 +151,7 @@ def put_item(ctx, id, item, path):
     else:
         with open(path, 'r') as file:
             data = json.load(file)
-    response = ctx.obj.put_item(id, data)
+    response = ctx.obj.es.put_item(id, data)
     click.echo(f"{response}")
 
 
@@ -173,7 +165,7 @@ def update(ctx, id, item):
     except json.decoder.JSONDecodeError:
         click.echo("Invalid JSON: enter json string enclosed in single quotes: '{\"key\": \"value\"}'")
         return
-    item = ctx.obj.update(id, i)
+    item = ctx.obj.es.update(id, i)
     click.echo(f"{item}")
 
 
@@ -190,7 +182,7 @@ def search(ctx, query, return_metadata):
     if 'query' not in q:
         click.echo("Invalid Query: query must be of the form: '{\"query\": {\"<search/match method>\": {\"<your field>\": \"<your search term>\"}}}'")
         return
-    results = ctx.obj.search(q, return_metadata=return_metadata)
+    results = ctx.obj.es.search(q, return_metadata=return_metadata)
     click.echo(f"{results}")
 
 
@@ -207,7 +199,7 @@ def delete_by_query(ctx, query, dryrun):
     if 'query' not in q:
         click.echo("Invalid Query: query must be of the form: '{\"query\": {\"<search/match method>\": {\"<your field>\": \"<your search term>\"}}}'")
         return
-    result = ctx.obj.delete_by_query(q, dryrun=dryrun)
+    result = ctx.obj.es.delete_by_query(q, dryrun=dryrun)
     click.echo(result)
 
 
@@ -215,7 +207,7 @@ def delete_by_query(ctx, query, dryrun):
 @click.pass_context
 @click.option('--id', required=True, help="referenceNumber/id of document")
 def fully_populated(ctx, id):
-    result = ctx.obj.fully_populated_in_elasticsearch(id)
+    result = ctx.obj.es.fully_populated_in_elasticsearch(id)
     click.echo(result)
 
 
@@ -234,7 +226,7 @@ def remove_keywords(ctx, keywords, query, dryrun):
         click.echo("Invalid Query: query must be of the form: '{\"query\": {\"<search/match method>\": {\"<your field>\": \"<your search term>\"}}}'")
         return
     click.echo(f"Attempting to remove {keywords} from all documents that match {query}")
-    ctx.obj.modify_by_search(q, ctx.obj.remove_keywords, keywords, dryrun=dryrun)
+    ctx.obj.es.modify_by_search(q, ctx.obj.remove_keywords, keywords, dryrun=dryrun)
 
 
 # Dynamodb
@@ -243,6 +235,12 @@ def remove_keywords(ctx, keywords, query, dryrun):
 @click.option('--debug/--no-debug', default=False)
 def dynamodb(ctx, debug):
     ctx.obj = Config(dynamodb=True)
+
+
+@dynamodb.command()
+@click.pass_context
+def inspect(ctx):
+    click.echo(ctx.obj.db)
 
 
 @dynamodb.command()
@@ -266,7 +264,13 @@ def get_item(ctx, id):
 @click.pass_context
 @click.option('--debug/--no-debug', default=False)
 def download(ctx, debug):
-    pass
+    ctx.obj = Config(downloader=True)
+
+
+@download.command()
+@click.pass_context
+def inspect(ctx):
+    click.echo(ctx.obj.dl)
 
 
 @download.command()
@@ -283,9 +287,6 @@ def configure(ctx, debug):
 @click.option('--dst', 'destination', required=False, default=None, type=str, help="Absolute path for destination folder")
 @click.pass_context
 def mp3(ctx, referenceNumber, csv_path, destination):
-    # Should also trigger uploading of csv metadata to dynamodb
-    ctx.obj = Config(downloader=True)
-
     if not referenceNumber and not csv_path:
         click.echo("You must specify either a reference number or a path to a csv file")
         return

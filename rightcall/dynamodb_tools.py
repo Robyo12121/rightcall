@@ -136,5 +136,5 @@ if __name__ == '__main__':
     # rtable.get_db_item('f7d183TVd10930', check_exists=True)
     # print(rtable.get_db_item('0153c7TVd10148', check_exists=False))
     from pathlib import Path
-    csv_file = Path(r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\data\csvs\demo\odigo4isRecorder_20190201-104416.csv')
+    csv_file = Path(r'C:\Users\RSTAUNTO\Desktop\Python\projects\rightcall_robin\data\csvs\odigo4isRecorder_20181123-112236.csv')
     rtable.write_csv_to_db(csv_file)
