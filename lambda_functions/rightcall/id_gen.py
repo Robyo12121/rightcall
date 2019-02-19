@@ -3,6 +3,11 @@ import random
 
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    """Generates a pseudorandom string of the specefied length using the
+        specefied character sets
+    INPUT:
+        size: <int> length of output string
+        chars: <string.character_set> characterset from which to generate output string"""
     return ''.join(random.choice(chars) for _ in range(size))
 
 

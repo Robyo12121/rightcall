@@ -11,27 +11,14 @@ import dynamodb_tools
 import elasticsearch_tools
 from requests_aws4auth import AWS4Auth
 
-if os.environ.get('AWS_EXECUTION_ENV') is not None:
-    print(f"Executing in AWS environment {os.environ.get('AWS_EXECUTION_ENV')}")
-    TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
-    MP3S = os.environ.get('MP3S')
-    COMPREHEND = os.environ.get('COMPREHEND')
-    ES_HOST = os.environ.get('ES_HOST')
-    INDEX = os.environ.get('INDEX')
-    TABLE_NAME = os.environ.get('TABLE_NAME')
-    REGION = os.environ.get('REGION')
+TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
+MP3S = os.environ.get('MP3S')
+COMPREHEND = os.environ.get('COMPREHEND')
+ES_HOST = os.environ.get('ES_HOST')
+INDEX = os.environ.get('INDEX')
+TABLE_NAME = os.environ.get('TABLE_NAME')
+REGION = os.environ.get('REGION')
 
-else:
-    print('Not executing in AWS environment')
-    TRANSCRIPTS = 'transcribe.rightcall'
-    MP3S = 'mp3.rightcall'
-    COMPREHEND = 'comprehend.rightcall'
-    ES_HOST = 'search-rightcall-445kqimzhyim4r44blgwlq532y.eu-west-1.es.amazonaws.com'
-    INDEX = 'demo'
-    TABLE_NAME = 'rightcall_metadata'
-    REGION = 'eu-west-1'
-
-print(MP3S, TRANSCRIPTS, COMPREHEND)
 
 # Logging
 logging.basicConfig()
@@ -51,7 +38,12 @@ class CustomException(Exception):
 
 
 def Elasticsearch(event):
-    # Get item from s3 bucket
+    """Handles events triggered by new objects in 'comprehend.rightcall' bucket
+        Retrieves relevant item from bucket
+        Retrieves corresponding metadata from DynamoDB database
+
+    """
+    # Retrieve item from bucket
     try:
         body = json.loads(event['Records'][0]['body'])
     except Exception as e:
@@ -68,18 +60,18 @@ def Elasticsearch(event):
     logger.info(f"Data from {bucket}: {s3_data}")
 
     referenceNumber = s3_data['referenceNumber']
-    # Get corresponding item from metadata
+
+    # Get corresponding data from dynamodb database
     db = dynamodb_tools.RightcallTable(REGION, TABLE_NAME)
     if db.get_db_item(referenceNumber, check_exists=True):
         metadata = db.get_db_item(referenceNumber, check_exists=False)
         logger.info(f"Data retrieved from {TABLE_NAME} database: {metadata}")
     else:
         logger.warning(f"Couldn't find metadata for {referenceNumber} in {TABLE_NAME}")
-        # raise CustomException(f"Couldn't retrieve metadata from {TABLE_NAME} table.")
         logger.error(f"Aborting")
         return False
 
-    # Combine items and sanitize them
+    # Load items into elasticearch
     credentials = boto3.Session().get_credentials()
     awsauth = AWS4Auth(credentials.access_key,
                        credentials.secret_key,
@@ -87,17 +79,16 @@ def Elasticsearch(event):
                        'es',
                        session_token=credentials.token)
     es = elasticsearch_tools.Elasticsearch(ES_HOST, REGION, INDEX, awsauth)
-    # Load them into elasticsearch
     result = es.load_call_record(metadata, s3_data)
     logger.info(f"Result: {result}")
     return result
 
 
 def Transcribe(event):
+    """Handles event triggered by a new object in the 'mp3.rightcall' bucket
+    Sends it to transcribe.
     """
-    S3 object created event received
-    Get URI of file and send it to transcribe
-    """
+    # Error checking stuff
     isSuccessful = False
     try:
         body = json.loads(event['Records'][0]['body'])
@@ -114,6 +105,7 @@ def Transcribe(event):
             logger.warning('More than one record. May be missing a job here!')
         body = body['Records'][0]
 
+    # Get relevant item from S3 bucket
     bucket = body['s3']['bucket']['name']
     key = body['s3']['object']['key']
     logger.info('Bucket Event: {}'.format(str(bucket)))
@@ -127,6 +119,8 @@ def Transcribe(event):
     else:
         logger.info('Wrong Bucket. Aborting')
         return False
+
+    # Send item to transcribe
     try:
         response = transcribe.transcribe_mp3(uri, TRANSCRIPTS)
         logger.info(response)
@@ -141,29 +135,9 @@ def Transcribe(event):
                 'job_name': job}
 
 
-def get_item_from_s3(bucket, filename):
-    s3 = boto3.client('s3')
-    logger.debug(f'Trying to get {filename} from {bucket}')
-    try:
-        data = s3.get_object(Bucket=bucket, Key=filename)
-        data = data['Body'].read().decode('utf-8')
-    except Exception as e:
-        logger.error(str(e))
-        raise e
-    else:
-        logger.debug('Success')
-    try:
-        data = json.loads(data)
-    except Exception as e:
-        logger.error(str(e))
-        raise e
-    else:
-        return data
-
-
 def Comprehend(event):
-    """
-    INPUT: 'AWS Transcribe 'JobFinished' event (JSON)
+    """Handles a Cloudwatch event triggered by a transcribe job being finished
+    INPUT: 'AWS Transcribe 'JobFinished' Cloudwatch event (JSON)
     Retrieves the file specified in the event from the 'TRANSCRIPTS' bucket
     Passes the transcript to Comprehend for sentiment, entities and keywords
     Checks whether a promotion occurred using 'promotion.py'
@@ -171,15 +145,14 @@ def Comprehend(event):
     the 'COMPREHEND' bucket
     OUTPUT : Success/failure of s3.put_object function
     """
-    # Fetch json file related to completed transcribe event from DESTINATION
-    # s3 bucket
+    # Get relevant item from 'transcribe.rightcall' bucket
     s3 = boto3.client('s3')
     filename = event['detail']['TranscriptionJobName'] + '.json'
     logger.info('Filename: {}'.format(str(filename)))
     data = get_item_from_s3(TRANSCRIPTS, filename)
     logger.debug(f'Keys of object: {str(data.keys())}')
 
-    # Give the transcript text to comprehend.py
+    # Get the transcript text from the item
     try:
         transcript_text = data['results']['transcripts'][0]['transcript']
     except Exception as e:
@@ -190,6 +163,7 @@ def Comprehend(event):
         logger.warning(f'Transcript is empty for {filename}. Exiting.')
         return False
 
+    # Use AWS Comprehend functions to extract info from transcript
     comp_obj = {}
     logger.debug(f'Creating record')
     comp_obj['referenceNumber'] = event['detail']['TranscriptionJobName'] \
@@ -211,6 +185,7 @@ def Comprehend(event):
     results = promotion.Promotion(data)
     comp_obj['promotion'] = results['Promo']
     logger.debug('comp_obj promo: {}'.format(str(comp_obj['promotion'])))
+
     # Save to json file in 'comprehend.rightcall' bucket
     logger.debug(f'Finished creating record')
     logger.debug(f'Saving to {COMPREHEND} s3 bucket')
@@ -226,9 +201,37 @@ def Comprehend(event):
         return response
 
 
+def get_item_from_s3(bucket, filename):
+    """A helper function to fetch an object from a particluar bucket
+    INPUT: <str> bucketname
+           <str> filename
+    OUTPUT: <dict> json data from object
+    """
+    s3 = boto3.client('s3')
+    logger.debug(f'Trying to get {filename} from {bucket}')
+    try:
+        data = s3.get_object(Bucket=bucket, Key=filename)
+        data = data['Body'].read().decode('utf-8')
+    except Exception as e:
+        logger.error(str(e))
+        raise e
+    else:
+        logger.debug('Success')
+    try:
+        data = json.loads(data)
+    except Exception as e:
+        logger.error(str(e))
+        raise e
+    else:
+        return data
+
+
 def event_type_transcribe_job_status(event):
     """
-    Returns True if incoming event is from transcribe
+    Returns True if incoming event is a cloudwatch
+    event caused by a transcription job finishing
+    INPUT: <dict> Json formatted event object
+    OUTPUT: <bool> True or False
     """
     if 'source' in event and event['source'] == 'aws.transcribe':
         logger.info('Job: {} Status: {}'.format(
@@ -240,6 +243,10 @@ def event_type_transcribe_job_status(event):
 
 
 def getSourceBucket(event):
+    """A helper bucket to extract the bucket name from
+    an incoming event
+    INPUT: <dict> json event object
+    OUTPUT: <str> name of bucket contained in event"""
     body = json.loads(event['Records'][0]['body'])
     try:
         bucket_name = body['Records'][0]['s3']['bucket']['name']
@@ -251,7 +258,10 @@ def getSourceBucket(event):
 
 def event_type_sqs_s3_new_object(event):
     """
-    Check if event is a new object event from s3 delivered by sqs
+    Returns True if incoming event is a new object
+    event from s3 delivered by sqs
+    INPUT: <dict> Json-formatted event object
+    OUTPUT: <bool> True or False
     """
     body = json.loads(event['Records'][0]['body'])
     if 'Records' not in body:
@@ -269,12 +279,18 @@ def Rightcall(event):
     Given an AWS event, determines event type (S3 or Cloudwatch) and
     take appropriate action.
         If event is an S3 'Object Created' event (delivered through SQS)
-        then there is a new object in the jobs folder of the 'rightcall.mp3' bucket
-        and the mp3 will be passed to Transcribe function.
+        then there is a new object in EITHER:
+            the '/jobs' folder of the 'mp3.rightcall' bucket
+            and the mp3 will be passed to Transcribe function
+        OR
+            the 'comprehend.rightcall' bucket and the json file will be combined
+            with metadata from the DynamoDB database and uploaded to elasticsearch
+
         If the event is a Cloudwatch 'TranscribeJobFinished' event the Comprehend
-        function will be called to process the finished transcription.
-    INPUT: AWS Event - (S3 Object Created or Cloudwatch - Transcribe job finisehd
-    OUTPUT: Success/Failure of Comprehend or Transcribe function
+        function will be called to process the finished transcription and the result
+        placed in the 'comprehend.rightcall' bucket
+    INPUT: <dict> json-formatted aws event
+    OUTPUT: <bool> True - Success/False - Failure of called function
     """
     response = {}
     if event_type_transcribe_job_status(event):
@@ -303,6 +319,8 @@ def lambda_handler(event, context):
     """
     Entrypoint for lambda function.
     Passes received event (any type) to Rightcall function.
+    INPUT: <json> aws event
+    OUTPUT: response from Rightcall function
     """
     logger.info('Received event: {}'.format(str(json.dumps(event, indent=2))))
     response = Rightcall(event)
@@ -435,6 +453,15 @@ if __name__ == '__main__':
             }
         ]
     }
+    TRANSCRIPTS = os.environ.get('TRANSCRIPTS')
+    MP3S = os.environ.get('MP3S')
+    COMPREHEND = os.environ.get('COMPREHEND')
+    ES_HOST = os.environ.get('ES_HOST')
+    INDEX = os.environ.get('INDEX')
+    TABLE_NAME = os.environ.get('TABLE_NAME')
+    REGION = os.environ.get('REGION')
+
+    print(MP3S, TRANSCRIPTS, COMPREHEND)
     logging.basicConfig(level=logging.DEBUG)
     response = lambda_handler(transcribe_job_status_event, None)
     print(response)

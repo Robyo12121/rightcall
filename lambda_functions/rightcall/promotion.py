@@ -16,7 +16,8 @@ if os.environ.get('AWS_EXECUTION_ENV') is not None:
 
 
 def setupEnv(env):
-    """Append '/nltk_data' to nltk data path and return True
+    """UNUSED
+     Appends '/nltk_data' to nltk data path and return True
      if executing as lambda function
      """
     if env.get('AWS_EXECUTION_ENV') is not None:
@@ -53,9 +54,16 @@ def setupLogging(LOGLEVEL='DEBUG', name=__name__, lambda_env=False):
 
 def get_stems(sentence):
     """
+    Given a sentence, returns a string containing the stems of the words
+    contained in the input sentence
     INPUT: string -- Input string
-    OUTPUT: string -- stemmed
-    Returns stemmed version of the input sentence"""
+    OUTPUT: string -- stemmed version of the input sentence
+    eg. "The humbled flies meeting mules agreed on the traditional sensational
+    meeting owned by the reference colonizer"
+    becomes:
+    "The humbl  fli meet mule agre on the tradit sensat
+    meet own by the refer colon"    
+    """
     word_pattern = re.compile("(?:[a-zA-Z]+[-–’'`ʼ]?)*[a-zA-Z]+[’'`ʼ]?")
     words = word_pattern.findall(sentence)
     porter_stemmer = PorterStemmer()
@@ -65,6 +73,13 @@ def get_stems(sentence):
 
 
 def get_data(path):
+    """Helper function. opens json file
+    at given path and returns data
+    INPUT
+        path: <str> path to file
+    OUTPUT:
+        data: <dict> json contents converted to python dict
+    """
     logger = logging.getLogger(__name__)
     try:
         with open(path, 'r') as file:
@@ -80,7 +95,11 @@ def generate_path(path):
     given directory if it is json file
     CORRECT USAGE: for data in promotion.generate_path(path):
             //do stuff
-    INCORRECT USAGE: data = promotion.generate_path(path)"""
+    INCORRECT USAGE: data = promotion.generate_path(path)
+    INPUT:
+        path: <str> path to directory
+    OUTPUT:
+        data from json files contained in directory"""
     logger = logging.getLogger(__name__)
     logger.debug(f"{generate_path.__name__} Called with '{path}'")
 
@@ -98,7 +117,14 @@ def generate_path(path):
 
 def bagofwords(sentence_words, vocab):
     """Given tokenized, words and a vocab
-    Returns term frequency array"""
+    Returns term frequency array
+    INPUTS:
+        sentence_words: <list> stemmed, tokenized, filtered list of words
+        vocab: <list> of <str> stemmed, tokenized, filtered list of words
+    OUTPUT:
+        bag: <list> of <int> array of int representing the frequency of each
+            word in sentence_words in vocab
+    """
     bag = [0] * len(vocab)
     for sw in sentence_words:
         for i, word in enumerate(vocab):
@@ -112,8 +138,10 @@ def preprocess(raw_sentence):
         Tokenize words
         Stem words
         Remove stop words
-    INPUT: string
-    OUPUT: list of strings"""
+    INPUT: raw_sentence: <str> Sentence to be processed
+    OUPUT: filtered_words: <list> of <str> list 
+        tokenized, stemmed, filtered words
+    """
     # Get words
     try:
         tokens = word_tokenize(raw_sentence)
@@ -133,8 +161,8 @@ def preprocess(raw_sentence):
 
 def normalize_tf(tf_vector):
     """Returns the normalized version of input vector
-    INPUT: list
-    OUTPUT: list
+    INPUT: tf_vector: <list> of <int> array representing frequency of words in a vocab
+    OUTPUT: normalized_vector: <list> of <int> normalized frequency array of input vector
     """
     if type(tf_vector) is not list:
         raise ValueError(f"Incorrect parameter type: {type(tf_vector)}")
@@ -147,7 +175,13 @@ def normalize_tf(tf_vector):
 
 
 def dot_prod(a, b):
-    """Returns the dot vector product of two lists of numbers"""
+    """Given normalized term frequency vectors returns the dot vector product
+    INPUTS:
+        a: <list> of <int>s first list of numbers
+        b: <list> of <int>s second list of numbers
+    OUTPUT:
+        <int> dot vector product of two input term frequency vectors
+    """
     if type(a) is not list:
         raise ValueError(f"Incorrect parameter type: {type(a)}")
     elif type(b) is not list:
@@ -160,11 +194,11 @@ def construct_vocab(words1, words2):
     """Combines words from two sentences into a single
         dictionary and assigns weighting of 1 to all words except
         'virtual-assist' which should get 2
-        NOTE: weighting is unused by rest of program. Should be removed
-        Input: words1 - List of strings
-               words2 - List of strings
-        Output: vocab - dictionary where key is word,
+        INPUT: words1 - <list> of <str>ings
+               words2 - <list> of <str>ings
+        OUTPUT: vocab - <dict>ionary where key is word,
                             value is weighting given two word
+        NOTE: weighting is unused by rest of program. Should be removed
     """
     if type(words1) is not list:
         raise ValueError(f"Incorrect parameter type: {type(words1)}")

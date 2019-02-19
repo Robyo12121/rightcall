@@ -104,7 +104,7 @@ venv_lambda/*
 /site
 
 # TXT
-docs/*
+!docs/*
 
 # mypy
 .mypy_cache/
@@ -151,6 +151,3 @@ lambda_functions/rightcall/*
 !lambda_functions/rightcall/write_to_elasticsearch.py
 !lambda_functions/rightcall/s3.py
 
-
-lambda_functions/es-access-test/*
-!lambda_functions/es-access-test/lambda_function.py

@@ -3,11 +3,7 @@ import boto3
 from sys import getsizeof
 import logging
 import os
-
-if os.environ.get("AWS_EXECUTION_ENV") is not None:
-    import text as text_processing
-else:
-    import text as text_processing
+import text as text_processing
 
 try:
     COMPREHEND_SIZE_LIMIT = int(os.environ.get('COMPREHEND_SIZE_LIMIT'))
@@ -25,6 +21,8 @@ def sum_sentiments(ResultList, weights=None):
     Using weights calculated from length of string segment
     ensures short strings with a particular sentiment
     don't overpower the overall results.
+    INPUTS:
+        ResultList
     """
     logger.info("Summing sentiments")
     sums = {'Positive': 0,
@@ -54,7 +52,14 @@ def chunkify(string, chunk_size=4970):
             '0': {'text': 'chunk 1 text'
                   'weight': <chunkweight>},
             '1': { etc}
-            """
+        INPUTS:
+            string: <str> text of transcript
+            chunk_size: <int> number of bytes for each chunk
+        OUTPUT:
+            chunks: <dict> chunkified version on input string
+            weights: <dict> the relative size of each chunk
+                compared to the length of the whole input string
+        """
         logger.info("Chunkifying...")
         chunks = {}
         weights = {}
@@ -70,6 +75,9 @@ def chunkify(string, chunk_size=4970):
 
 
 def best_sentiment(sent_dict):
+    """
+    Examines all the sentients of
+    """
     logger.info("Finding best sentiment")
     sentiment = None
     highest = 0
