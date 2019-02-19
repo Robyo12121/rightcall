@@ -4,7 +4,7 @@
 Uses AWS services and Python to extract information from call center service desk audio recordings. Features include automatic transcription of calls, sentiment analysis, automatic detection of custom events and visualisation
 
 
-![](https://raw.github.com/Robyo12121/rightcall/docs/)
+![](https://github.com/Robyo12121/rightcall/docs/)
 
 ## Installation
 
