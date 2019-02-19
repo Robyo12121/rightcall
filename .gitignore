@@ -133,6 +133,7 @@ data/*
 
 # Picture
 *.PNG
+!docs/diagrams/*.PNG
 *.JPEG
 
 # AWS lambda build libraries
