@@ -4,7 +4,9 @@
 Uses AWS services and Python to extract information from call center service desk audio recordings. Features include automatic transcription of calls, sentiment analysis, automatic detection of custom events and visualisation
 
 
-![](header.png)
+### High-level Architecture
+
+![architecture_diagram](docs/diagrams/Rightcall Architecture.png)
 
 ## Installation
 
