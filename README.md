@@ -6,7 +6,7 @@ Uses AWS services and Python to extract information from call center service des
 
 ### High-level Architecture
 
-![architecture_diagram](docs/diagrams/Rightcall Architecture.png)
+![architecture_diagram](images/rightcall_architecture.png)
 
 ## Installation
 
